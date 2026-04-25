@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Reusable input style — used in all forms */
+  .input {
+    @apply w-full bg-[#1A1A2E] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#E94560] transition-colors;
+  }
+}

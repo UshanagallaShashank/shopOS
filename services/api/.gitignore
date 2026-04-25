@@ -1,0 +1,70 @@
+# ── Virtual environments ──────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env/
+
+# ── Python bytecode ───────────────────────────────────────
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ── Distribution / packaging ──────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# ── Environment / secrets ────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+serviceAccountKey.json
+
+# ── Testing & coverage ────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+.tox/
+
+# ── Type checking & linting ───────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# ── Database ─────────────────────────────────────────────
+*.sqlite
+*.db
+*.sqlite3
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+logs/
+
+# ── macOS ────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Editor ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Jupyter ──────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Misc ─────────────────────────────────────────────────
+.cache/
+tmp/
