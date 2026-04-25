@@ -36,3 +36,7 @@ class Org(UUIDPrimaryKey, Timestamps, Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     logo: Mapped[str | None] = mapped_column(Text, nullable=True)  # data URL
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Storefront UI customisation
+    ui_template: Mapped[str | None] = mapped_column(String(50), nullable=True)   # e.g. "dark_edge"
+    primary_color: Mapped[str | None] = mapped_column(String(20), nullable=True)  # hex, e.g. "#E94560"

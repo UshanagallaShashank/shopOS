@@ -34,6 +34,13 @@ class OrgUpdate(BaseModel):
     address: str | None = None
     logo: str | None = None
     category: str | None = None
+    ui_template: str | None = None
+    primary_color: str | None = None
+
+
+class OrgUIUpdate(BaseModel):
+    ui_template: str | None = None
+    primary_color: str | None = None
 
 
 class OrgResponse(BaseModel):
@@ -48,6 +55,8 @@ class OrgResponse(BaseModel):
     address: str | None = None
     logo: str | None = None
     category: str | None = None
+    ui_template: str | None = None
+    primary_color: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -1,6 +1,6 @@
 // API client — thin fetch wrapper, all routes in one place
 import type {
-  Org, OrgCreate, OrgUpdate,
+  Org, OrgCreate, OrgUpdate, OrgUIUpdate,
   Product, ProductCreate, ProductUpdate,
   User, UserCreate, UserUpdate, Order,
   OrgInvite, OrgInviteCreate,
@@ -51,6 +51,7 @@ export const api = {
     get: (id: string) => req<Org>(`/orgs/${id}`),
     create: (data: OrgCreate) => req<Org>("/orgs/", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: OrgUpdate) => req<Org>(`/orgs/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    updateUI: (id: string, data: OrgUIUpdate) => req<Org>(`/orgs/${id}/ui`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => req<void>(`/orgs/${id}`, { method: "DELETE" }),
   },
   products: {

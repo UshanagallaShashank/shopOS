@@ -16,6 +16,8 @@ export interface Org {
   address: string | null
   logo: string | null
   category: string | null
+  ui_template: string | null
+  primary_color: string | null
   created_at: string
 }
 
@@ -28,6 +30,12 @@ export interface OrgUpdate {
   name?: string; status?: OrgStatus; plan?: PlanType
   description?: string; email?: string; phone?: string
   address?: string; logo?: string; category?: string
+  ui_template?: string; primary_color?: string
+}
+
+export interface OrgUIUpdate {
+  ui_template?: string | null
+  primary_color?: string | null
 }
 
 export interface Product {

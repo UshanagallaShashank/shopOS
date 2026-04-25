@@ -1,12 +1,11 @@
 "use client"
-// Shop grid — browse products, add to cart inline, click product to open detail page
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
-  ShoppingCart, Plus, Minus, X, ImageOff,
-  ArrowLeft, Package, CheckCircle2, Search
+  ShoppingCart, Plus, Minus, X, ImageOff, Package,
+  CheckCircle2, Search, MapPin, Mail, Phone, Tag,
 } from "lucide-react"
 import { Star } from "lucide-react"
 import { api } from "@/lib/api"
@@ -14,22 +13,20 @@ import { useAuth } from "@/lib/hooks/useAuth"
 import { useCart } from "@/lib/hooks/useCart"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { TemplateShell } from "@/components/template-shell"
 
-// ── Stars display ─────────────────────────────────────────────────────────
 function Stars({ value }: { value: number }) {
   return (
     <span className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((n) => (
-        <Star key={n} className={`h-3.5 w-3.5 ${n <= Math.round(value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/25"}`} />
+        <Star key={n} className={`h-3 w-3 ${n <= Math.round(value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`} />
       ))}
     </span>
   )
 }
 
 // ── Cart sidebar ───────────────────────────────────────────────────────────
-function CartSidebar({ orgId, userId, onClose }: {
-  orgId: string; userId: string; onClose: () => void
-}) {
+function CartSidebar({ orgId, userId, onClose }: { orgId: string; userId: string; onClose: () => void }) {
   const qc = useQueryClient()
   const { items, count, total, setQty, remove, clear } = useCart(orgId)
   const [placed, setPlaced] = useState(false)
@@ -38,39 +35,37 @@ function CartSidebar({ orgId, userId, onClose }: {
   const placeOrder = useMutation({
     mutationFn: () =>
       api.orders.create({
-        org_id: orgId,
-        user_id: userId,
+        org_id: orgId, user_id: userId,
         items: items.map((i) => ({
-          product_id: i.product.id,
-          quantity: i.qty,
-          price_at_purchase: i.product.price,
+          product_id: i.product.id, quantity: i.qty, price_at_purchase: i.product.price,
         })),
         total,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-orders"] })
-      clear()
-      setPlaced(true)
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my-orders"] }); clear(); setPlaced(true) },
     onError: (e: Error) => setErr(e.message),
   })
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/60" onClick={onClose} />
+      <div className="flex-1 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="w-full max-w-sm bg-card border-l border-border flex flex-col shadow-2xl">
         <div className="flex justify-between items-center p-5 border-b border-border">
-          <h2 className="font-semibold flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4" /> Cart ({count})
+          <h2 className="font-semibold flex items-center gap-2 text-foreground">
+            <ShoppingCart className="h-4 w-4" /> Cart
+            {count > 0 && <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">{count}</span>}
           </h2>
-          <button onClick={onClose}><X className="h-5 w-5 text-muted-foreground" /></button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {placed ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
-            <CheckCircle2 className="h-16 w-16 text-green-400" />
+            <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
             <div>
-              <p className="font-bold text-lg">Order Placed!</p>
+              <p className="font-bold text-lg text-foreground">Order Placed!</p>
               <p className="text-sm text-muted-foreground mt-1">₹{total.toLocaleString("en-IN")}</p>
             </div>
             <Link href="/end-user">
@@ -79,35 +74,36 @@ function CartSidebar({ orgId, userId, onClose }: {
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {items.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">Your cart is empty.</p>
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <ShoppingCart className="h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">Your cart is empty.</p>
+                </div>
               )}
               {items.map(({ product, qty }) => (
-                <div key={product.id} className="flex gap-3 p-3 rounded-xl border border-border bg-background">
+                <div key={product.id} className="flex gap-3 p-3 rounded-xl border border-border bg-background/50">
                   {product.images?.[0] ? (
-                    <img src={product.images[0]} alt={product.name}
-                      className="h-14 w-14 rounded-lg object-contain bg-accent/10 shrink-0 border border-border" />
+                    <img src={product.images[0]} alt={product.name} className="h-14 w-14 rounded-lg object-contain bg-muted shrink-0 border border-border" />
                   ) : (
-                    <div className="h-14 w-14 rounded-lg bg-accent/30 shrink-0 flex items-center justify-center border border-border">
+                    <div className="h-14 w-14 rounded-lg bg-muted shrink-0 flex items-center justify-center border border-border">
                       <ImageOff className="h-5 w-5 text-muted-foreground/40" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">₹{Number(product.price).toLocaleString("en-IN")} each</p>
+                    <p className="text-sm font-medium truncate text-foreground">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">₹{Number(product.price).toLocaleString("en-IN")}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <button onClick={() => setQty(product.id, qty - 1)}
-                        className="h-6 w-6 rounded-md border border-border bg-accent/30 hover:bg-accent flex items-center justify-center">
+                        className="h-6 w-6 rounded-md border border-border hover:bg-accent flex items-center justify-center transition-colors">
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="text-sm font-medium w-5 text-center">{qty}</span>
-                      <button onClick={() => setQty(product.id, qty + 1)}
-                        disabled={qty >= product.stock}
-                        className="h-6 w-6 rounded-md border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40">
+                      <span className="text-sm font-bold w-5 text-center text-foreground">{qty}</span>
+                      <button onClick={() => setQty(product.id, qty + 1)} disabled={qty >= product.stock}
+                        className="h-6 w-6 rounded-md border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-opacity">
                         <Plus className="h-3 w-3" />
                       </button>
-                      <button onClick={() => remove(product.id)} className="ml-auto text-muted-foreground hover:text-destructive">
+                      <button onClick={() => remove(product.id)} className="ml-auto text-muted-foreground hover:text-destructive transition-colors">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -116,13 +112,13 @@ function CartSidebar({ orgId, userId, onClose }: {
               ))}
             </div>
             {items.length > 0 && (
-              <div className="p-4 border-t border-border space-y-3">
+              <div className="p-4 border-t border-border space-y-3 bg-card">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal ({count} items)</span>
-                  <span className="font-bold">₹{total.toLocaleString("en-IN")}</span>
+                  <span className="text-muted-foreground">Subtotal ({count} item{count !== 1 ? "s" : ""})</span>
+                  <span className="font-bold text-foreground">₹{total.toLocaleString("en-IN")}</span>
                 </div>
                 {err && <p className="text-destructive text-xs">{err}</p>}
-                <Button className="w-full gap-2" onClick={() => placeOrder.mutate()} disabled={placeOrder.isPending}>
+                <Button className="w-full gap-2 h-11" onClick={() => placeOrder.mutate()} disabled={placeOrder.isPending}>
                   {placeOrder.isPending ? "Placing order…" : `Place Order · ₹${total.toLocaleString("en-IN")}`}
                 </Button>
               </div>
@@ -149,166 +145,282 @@ export default function ShopOrgPage() {
     queryFn: () => api.products.list(orgId),
   })
 
-  const { add, setQty, remove, count, total, items } = useCart(orgId)
+  const { add, setQty, count, total, items } = useCart(orgId)
   const [cartOpen, setCartOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   const activeProducts = products.filter((p) => p.is_active)
-  const filtered = activeProducts.filter((p) =>
-    !search ||
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.category?.toLowerCase().includes(search.toLowerCase())
-  )
+
+  const categories = useMemo(() => {
+    const cats = new Set(activeProducts.map((p) => p.category).filter(Boolean) as string[])
+    return Array.from(cats).sort()
+  }, [activeProducts])
+
+  const filtered = activeProducts.filter((p) => {
+    const matchesSearch = !search ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.category?.toLowerCase().includes(search.toLowerCase())
+    const matchesCategory = !activeCategory || p.category === activeCategory
+    return matchesSearch && matchesCategory
+  })
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/shop" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold">{org?.name ?? "Shop"}</h1>
-            <p className="text-xs text-muted-foreground">{org?.slug}.shopOS.in</p>
+    <TemplateShell org={org}>
+      <div className="min-h-screen bg-background text-foreground">
+
+        {/* ── Org header banner ── */}
+        <div className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-30">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {org?.logo ? (
+                <img src={org.logo} alt={org?.name} className="h-10 w-10 rounded-xl object-cover border border-border shrink-0" />
+              ) : (
+                <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0 text-primary font-bold text-lg">
+                  {org?.name?.[0]?.toUpperCase() ?? "S"}
+                </div>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-base font-bold text-foreground truncate">{org?.name ?? "Shop"}</h1>
+                {org?.category && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Tag className="h-3 w-3" />{org.category}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-background hover:border-primary/50 transition-colors shrink-0"
+            >
+              <ShoppingCart className="h-4 w-4 text-foreground" />
+              <span className="text-sm font-medium text-foreground hidden sm:inline">Cart</span>
+              {count > 0 && (
+                <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
+            </button>
           </div>
         </div>
-        <button
-          onClick={() => setCartOpen(true)}
-          className="relative flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          <span className="text-sm font-medium">Cart</span>
-          {count > 0 && (
-            <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-              {count}
-            </span>
+
+        <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+
+          {/* ── Search + category filter ── */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground h-11"
+              />
+            </div>
+
+            {categories.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={() => setActiveCategory(null)}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                    activeCategory === null
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40 bg-transparent"
+                  }`}
+                >
+                  All
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                      activeCategory === cat
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40 bg-transparent"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Results count ── */}
+          {!isLoading && (search || activeCategory) && (
+            <p className="text-sm text-muted-foreground">
+              {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+              {activeCategory && ` in ${activeCategory}`}
+              {search && ` for "${search}"`}
+            </p>
           )}
-        </button>
-      </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search products…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Skeleton */}
-      {isLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <div key={n} className="aspect-[3/4] rounded-2xl border border-border bg-card animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {!isLoading && filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-xl border border-dashed border-border">
-          <Package className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-muted-foreground text-sm">
-            {search ? `No products matching "${search}"` : "No products available."}
-          </p>
-        </div>
-      )}
-
-      {/* Product grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filtered.map((p) => {
-          const inCart = items.find((i) => i.product.id === p.id)
-          return (
-            <div key={p.id} className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col group">
-              {/* Image — links to detail page */}
-              <Link href={`/shop/${orgId}/${p.id}`} className="block aspect-square bg-accent/10 overflow-hidden">
-                {p.images?.[0] ? (
-                  <img
-                    src={p.images[0]}
-                    alt={p.name}
-                    className="w-full h-full object-contain transition-opacity group-hover:opacity-90"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageOff className="h-10 w-10 text-muted-foreground/30" />
+          {/* ── Skeleton ── */}
+          {isLoading && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, n) => (
+                <div key={n} className="rounded-2xl border border-border bg-card overflow-hidden">
+                  <div className="aspect-square bg-muted animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Empty state ── */}
+          {!isLoading && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-2xl border border-dashed border-border">
+              <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
+                <Package className="h-8 w-8 text-muted-foreground/40" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-medium text-foreground">
+                  {search ? `No results for "${search}"` : activeCategory ? `No ${activeCategory} products` : "No products available"}
+                </p>
+                {(search || activeCategory) && (
+                  <button
+                    onClick={() => { setSearch(""); setActiveCategory(null) }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Clear filters
+                  </button>
                 )}
-              </Link>
+              </div>
+            </div>
+          )}
 
-              {/* Info */}
-              <div className="p-3 flex flex-col gap-2 flex-1">
-                {/* Name — links to detail page */}
-                <Link href={`/shop/${orgId}/${p.id}`} className="block">
-                  <p className="font-medium text-sm line-clamp-2 leading-snug hover:text-primary transition-colors">{p.name}</p>
-                  {p.category && <p className="text-xs text-muted-foreground mt-0.5">{p.category}</p>}
-                </Link>
+          {/* ── Product grid ── */}
+          {!isLoading && filtered.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((p) => {
+                const inCart = items.find((i) => i.product.id === p.id)
+                const outOfStock = p.stock === 0
+                const lowStock = !outOfStock && p.stock < 5
 
-                {p.avg_rating != null && (
-                  <div className="flex items-center gap-1">
-                    <Stars value={p.avg_rating} />
-                    <span className="text-xs text-muted-foreground">({p.review_count})</span>
-                  </div>
-                )}
+                return (
+                  <div key={p.id}
+                    className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col group hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200"
+                  >
+                    {/* Image */}
+                    <Link href={`/shop/${orgId}/${p.id}`} className="relative block aspect-square bg-muted overflow-hidden">
+                      {p.images?.[0] ? (
+                        <img src={p.images[0]} alt={p.name}
+                          className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageOff className="h-10 w-10 text-muted-foreground/25" />
+                        </div>
+                      )}
+                      {outOfStock && (
+                        <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center">
+                          <span className="text-xs font-semibold text-foreground bg-card border border-border px-2.5 py-1 rounded-full">
+                            Out of stock
+                          </span>
+                        </div>
+                      )}
+                      {lowStock && !outOfStock && (
+                        <span className="absolute top-2 right-2 text-[10px] font-bold bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full">
+                          {p.stock} left
+                        </span>
+                      )}
+                    </Link>
 
-                <div className="flex items-center justify-between mt-auto pt-1">
-                  <p className="font-bold text-sm">₹{Number(p.price).toLocaleString("en-IN")}</p>
-                  {p.stock === 0 ? (
-                    <span className="text-xs text-destructive font-medium">Out of stock</span>
-                  ) : inCart ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setQty(p.id, inCart.qty - 1)}
-                        className="h-6 w-6 rounded-md border border-border bg-accent flex items-center justify-center hover:bg-accent/80"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span className="text-sm font-medium w-5 text-center">{inCart.qty}</span>
-                      <button
-                        onClick={() => setQty(p.id, inCart.qty + 1)}
-                        disabled={inCart.qty >= p.stock}
-                        className="h-6 w-6 rounded-md border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
+                    {/* Info */}
+                    <div className="p-3 flex flex-col gap-1.5 flex-1">
+                      <Link href={`/shop/${orgId}/${p.id}`}>
+                        <p className="font-medium text-sm leading-snug line-clamp-2 text-foreground hover:text-primary transition-colors">
+                          {p.name}
+                        </p>
+                        {p.category && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{p.category}</p>
+                        )}
+                      </Link>
+
+                      {p.avg_rating != null && (
+                        <div className="flex items-center gap-1">
+                          <Stars value={p.avg_rating} />
+                          <span className="text-[11px] text-muted-foreground">({p.review_count})</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between mt-auto pt-1">
+                        <p className="font-bold text-sm text-foreground">₹{Number(p.price).toLocaleString("en-IN")}</p>
+                        {outOfStock ? null : inCart ? (
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setQty(p.id, inCart.qty - 1)}
+                              className="h-6 w-6 rounded-lg border border-border bg-muted flex items-center justify-center hover:bg-accent transition-colors">
+                              <Minus className="h-3 w-3 text-foreground" />
+                            </button>
+                            <span className="text-sm font-bold w-4 text-center text-foreground">{inCart.qty}</span>
+                            <button onClick={() => setQty(p.id, inCart.qty + 1)} disabled={inCart.qty >= p.stock}
+                              className="h-6 w-6 rounded-lg border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-opacity">
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => add(p)}
+                            className="h-7 px-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 flex items-center gap-1 transition-opacity">
+                            <Plus className="h-3 w-3" /> Add
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => add(p)}
-                      className="h-7 px-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 flex items-center gap-1 transition-colors"
-                    >
-                      <Plus className="h-3 w-3" /> Add
-                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* ── Org info footer ── */}
+          {org && (org.description || org.email || org.phone || org.address) && (
+            <div className="border-t border-border pt-8 mt-4">
+              <div className="rounded-2xl bg-card border border-border p-5 space-y-3">
+                <p className="text-sm font-semibold text-foreground">About {org.name}</p>
+                {org.description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{org.description}</p>
+                )}
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  {org.email && (
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />{org.email}
+                    </span>
+                  )}
+                  {org.phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />{org.phone}
+                    </span>
+                  )}
+                  {org.address && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />{org.address}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
-          )
-        })}
+          )}
+        </div>
       </div>
 
-      {/* Cart sidebar */}
+      {/* Cart sidebar — outside scroll container */}
       {cartOpen && shopUser && (
-        <CartSidebar
-          orgId={orgId}
-          userId={shopUser.id}
-          onClose={() => setCartOpen(false)}
-        />
+        <CartSidebar orgId={orgId} userId={shopUser.id} onClose={() => setCartOpen(false)} />
       )}
 
       {/* Sticky cart pill */}
       {count > 0 && !cartOpen && (
         <div className="fixed bottom-6 right-6 z-40">
-          <button
-            onClick={() => setCartOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors font-medium"
-          >
+          <button onClick={() => setCartOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary text-primary-foreground shadow-xl hover:opacity-90 transition-opacity font-medium">
             <ShoppingCart className="h-4 w-4" />
             {count} item{count !== 1 ? "s" : ""} · ₹{total.toLocaleString("en-IN")}
           </button>
         </div>
       )}
-    </div>
+    </TemplateShell>
   )
 }

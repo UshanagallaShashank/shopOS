@@ -8,7 +8,7 @@ from database import get_db
 from fastapi import HTTPException
 from middleware.auth import get_current_user, require_org_manager_or_above, require_platform_admin
 from models.user import User, UserRole
-from schemas.org import OrgCreate, OrgResponse, OrgUpdate
+from schemas.org import OrgCreate, OrgResponse, OrgUIUpdate, OrgUpdate
 from services import org_service
 from utils.pagination import paginate
 
@@ -81,6 +81,22 @@ async def update_org(
     db: AsyncSession = Depends(get_db),
 ):
     return await org_service.update_org(db, org_id, data)
+
+
+@router.patch("/{org_id}/ui", response_model=OrgResponse)
+async def update_org_ui(
+    org_id: uuid.UUID,
+    data: OrgUIUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # org_admin can update only their own org's UI; platform_admin can update any
+    if current_user.role == UserRole.org_admin:
+        if current_user.org_id != org_id:
+            raise HTTPException(status_code=403, detail="org_admin can only update their own org")
+    elif current_user.role not in (UserRole.platform_admin, UserRole.orgs_manager):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return await org_service.update_org(db, org_id, OrgUpdate(**data.model_dump(exclude_none=True)))
 
 
 @router.delete("/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
