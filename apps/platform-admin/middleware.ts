@@ -1,47 +1,28 @@
-// Middleware runs on every request — refreshes Supabase session and guards routes
-// If user is not logged in and tries to visit /dashboard or /orgs → redirect to /login
-import { createServerClient } from "@supabase/ssr"
+// Middleware — checks for shopos_token cookie to protect routes
+// No Supabase SDK needed — token is set by our backend auth flow
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request })
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("shopos_token")?.value
+  const { pathname } = request.nextUrl
 
-  // Supabase needs to read/write cookies to keep the session alive
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const isAuthPage = pathname.startsWith("/login")
+    || pathname.startsWith("/signup")
+    || pathname.startsWith("/auth")
 
-  // getUser() refreshes the session token if it's expired
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login") ||
-                     request.nextUrl.pathname.startsWith("/signup")
-
-  // Not logged in + trying to access a protected page → go to login
-  if (!user && !isAuthPage) {
+  // Not logged in + protected page → login
+  if (!token && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Already logged in + visiting login → go to dashboard
-  if (user && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+  // Already logged in + auth page → home (redirects to correct dashboard)
+  if (token && isAuthPage && !pathname.startsWith("/auth/callback")) {
+    return NextResponse.redirect(new URL("/", request.url))
   }
 
-  return response
+  return NextResponse.next()
 }
 
-// Only run middleware on these paths — skip static files and API routes
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 }

@@ -33,7 +33,7 @@ export interface ProductCreate {
   stock?: number; category?: string; description?: string
 }
 export interface ProductUpdate {
-  name?: string; price?: number; stock?: number; is_active?: boolean
+  name?: string; price?: number; stock?: number; is_active?: boolean; description?: string; category?: string
 }
 
 export interface User {
@@ -54,6 +54,12 @@ export interface UserCreate {
   org_id?: string
 }
 
+export interface UserUpdate {
+  role?: UserRole
+  org_id?: string
+  clear_org?: boolean
+}
+
 export interface Order {
   id: string
   org_id: string
@@ -62,4 +68,21 @@ export interface Order {
   total: number
   razorpay_order_id: string | null
   created_at: string
+}
+
+export interface OrgInvite {
+  id: string
+  org_id: string
+  code: string
+  email: string | null
+  created_by: string
+  redeemed_by: string | null
+  redeemed_at: string | null
+  expires_at: string
+  created_at: string
+}
+
+export interface OrgInviteCreate {
+  org_id: string
+  email?: string
 }
