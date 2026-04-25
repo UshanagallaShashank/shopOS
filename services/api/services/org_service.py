@@ -1,10 +1,12 @@
 # Org service — all business logic for orgs, no HTTP concerns here
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.org import Org
+from models.product import Product
+from models.order import Order, OrderItem
 from schemas.org import OrgCreate, OrgUpdate
 from utils.exceptions import ConflictError, NotFoundError
 
@@ -45,5 +47,18 @@ async def update_org(db: AsyncSession, org_id: uuid.UUID, data: OrgUpdate) -> Or
 
 async def delete_org(db: AsyncSession, org_id: uuid.UUID) -> None:
     org = await get_org(db, org_id)
+
+    # Must delete children before the parent — FK constraints enforce this order:
+    # order_items → orders → products → org
+    order_ids = (await db.execute(
+        select(Order.id).where(Order.org_id == org_id)
+    )).scalars().all()
+
+    if order_ids:
+        await db.execute(delete(OrderItem).where(OrderItem.order_id.in_(order_ids)))
+
+    await db.execute(delete(Order).where(Order.org_id == org_id))
+    await db.execute(delete(Product).where(Product.org_id == org_id))
+
     await db.delete(org)
     await db.commit()

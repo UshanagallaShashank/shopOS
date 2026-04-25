@@ -5,6 +5,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { api } from "@/lib/api"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function NewProductPage() {
   const { id: orgId } = useParams<{ id: string }>()
@@ -38,47 +42,63 @@ export default function NewProductPage() {
   }
 
   return (
-    <div className="max-w-md">
-      <Link href={`/orgs/${orgId}`} className="text-sm text-gray-400 hover:text-white mb-6 inline-block">← Back to Org</Link>
-      <h1 className="text-2xl font-bold mb-6">Add Product</h1>
+    <div className="max-w-md space-y-6">
+      <Link href={`/orgs/${orgId}`} className="text-sm text-muted-foreground hover:text-foreground inline-block">
+        ← Back to Org
+      </Link>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Product Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Floral Silk Kurta" required className="input" />
-        </Field>
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Product</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Price (₹)">
-            <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="999" required className="input" />
-          </Field>
-          <Field label="Stock">
-            <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" min="0" required className="input" />
-          </Field>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Product Name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Floral Silk Kurta" required />
+            </div>
 
-        <Field label="Category (optional)">
-          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ethnic Wear" className="input" />
-        </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="price">Price (₹)</Label>
+                <Input id="price" type="number" min="0" step="0.01" placeholder="999"
+                  value={price} onChange={(e) => setPrice(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="stock">Stock</Label>
+                <Input id="stock" type="number" min="0"
+                  value={stock} onChange={(e) => setStock(e.target.value)} required />
+              </div>
+            </div>
 
-        <Field label="Description (optional)">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short product description..." rows={3} className="input resize-none" />
-        </Field>
+            <div className="space-y-1.5">
+              <Label htmlFor="category">Category (optional)</Label>
+              <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)}
+                placeholder="Ethnic Wear" />
+            </div>
 
-        {error && <p className="text-red-400 text-sm">{error.message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="description">Description (optional)</Label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Short product description..."
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+              />
+            </div>
 
-        <button type="submit" disabled={isPending} className="w-full bg-[#E94560] hover:bg-[#d63050] disabled:opacity-50 py-2.5 rounded-lg text-sm font-medium transition-colors">
-          {isPending ? "Adding..." : "Add Product"}
-        </button>
-      </form>
-    </div>
-  )
-}
+            {error && <p className="text-destructive text-sm">{error.message}</p>}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-sm text-gray-400 mb-1.5">{label}</label>
-      {children}
+            <Button type="submit" disabled={isPending} className="w-full">
+              {isPending ? "Adding..." : "Add Product"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

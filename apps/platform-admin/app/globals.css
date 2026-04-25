@@ -33,3 +33,18 @@
 @layer base {
   body { @apply bg-background text-foreground; }
 }
+
+/* Fix Chrome autofill overriding dark background on inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px hsl(222 47% 9%) inset;
+  -webkit-text-fill-color: hsl(210 40% 98%);
+  caret-color: hsl(210 40% 98%);
+}
+
+/* Dark styling for native select options (Firefox/Chrome on macOS) */
+select option {
+  background-color: hsl(222 47% 9%);
+  color: hsl(210 40% 98%);
+}
