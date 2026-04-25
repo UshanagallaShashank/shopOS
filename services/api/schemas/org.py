@@ -11,19 +11,29 @@ class OrgCreate(BaseModel):
     name: str
     slug: str
     plan: PlanType = PlanType.starter
+    description: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    logo: str | None = None
+    category: str | None = None
 
     @field_validator("slug")
     @classmethod
     def slug_lowercase(cls, v: str) -> str:
-        # Slug becomes part of the URL — force lowercase, replace spaces with dashes
         return v.lower().replace(" ", "-")
 
 
 class OrgUpdate(BaseModel):
-    # All fields optional — PATCH only updates what you send
     name: str | None = None
     status: OrgStatus | None = None
     plan: PlanType | None = None
+    description: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    logo: str | None = None
+    category: str | None = None
 
 
 class OrgResponse(BaseModel):
@@ -32,6 +42,12 @@ class OrgResponse(BaseModel):
     name: str
     status: OrgStatus
     plan: PlanType
+    description: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    logo: str | None = None
+    category: str | None = None
     created_at: datetime
 
-    model_config = {"from_attributes": True}  # lets Pydantic read SQLAlchemy objects
+    model_config = {"from_attributes": True}

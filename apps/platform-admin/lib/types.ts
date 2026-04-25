@@ -10,11 +10,25 @@ export interface Org {
   name: string
   status: OrgStatus
   plan: PlanType
+  description: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  logo: string | null
+  category: string | null
   created_at: string
 }
 
-export interface OrgCreate { name: string; slug: string; plan: PlanType }
-export interface OrgUpdate { name?: string; status?: OrgStatus; plan?: PlanType }
+export interface OrgCreate {
+  name: string; slug: string; plan: PlanType
+  description?: string; email?: string; phone?: string
+  address?: string; logo?: string; category?: string
+}
+export interface OrgUpdate {
+  name?: string; status?: OrgStatus; plan?: PlanType
+  description?: string; email?: string; phone?: string
+  address?: string; logo?: string; category?: string
+}
 
 export interface Product {
   id: string
@@ -25,16 +39,35 @@ export interface Product {
   stock: number
   category: string | null
   is_active: boolean
+  images: string[]
+  avg_rating: number | null
+  review_count: number
   created_at: string
 }
 
 export interface ProductCreate {
   org_id: string; name: string; price: number
   stock?: number; category?: string; description?: string
+  images?: string[]
 }
 export interface ProductUpdate {
-  name?: string; price?: number; stock?: number; is_active?: boolean; description?: string; category?: string
+  name?: string; price?: number; stock?: number; is_active?: boolean
+  description?: string; category?: string; images?: string[]
 }
+
+export interface ProductReview {
+  id: string
+  product_id: string
+  user_id: string
+  user_email: string | null
+  rating: number
+  comment: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReviewCreate { rating: number; comment?: string }
+export interface ReviewUpdate { rating?: number; comment?: string }
 
 export interface User {
   id: string
@@ -43,6 +76,7 @@ export interface User {
   phone: string | null
   role: UserRole
   org_id: string | null
+  accessible_org_ids: string[]
   created_at: string
 }
 
@@ -85,4 +119,32 @@ export interface OrgInvite {
 export interface OrgInviteCreate {
   org_id: string
   email?: string
+}
+
+export interface OrgRequest {
+  id: string
+  user_id: string
+  user_email?: string | null
+  org_name: string
+  org_slug: string
+  plan: string
+  logo_url: string | null
+  business_docs: string | null
+  description: string | null
+  reason: string | null
+  status: "pending" | "approved" | "rejected"
+  reviewed_by: string | null
+  created_org_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OrgRequestCreate {
+  org_name: string
+  org_slug: string
+  plan?: string
+  logo_url?: string
+  business_docs?: string
+  description?: string
+  reason?: string
 }

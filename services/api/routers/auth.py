@@ -57,3 +57,13 @@ async def oauth_callback(code: str, db: AsyncSession = Depends(get_db)):
     token_data = await auth_service.handle_oauth_callback(db, _supabase_admin(), code)
     frontend = settings.allowed_origins[0]
     return RedirectResponse(f"{frontend}/auth/callback?token={token_data['access_token']}")
+
+
+@router.post("/logout")
+async def logout():
+    """
+    Logout endpoint - currently just confirms logout on server side.
+    Token invalidation happens client-side by removing the token.
+    In the future, this could blacklist tokens or revoke Supabase sessions.
+    """
+    return {"message": "Logged out successfully"}

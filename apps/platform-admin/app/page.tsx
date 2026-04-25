@@ -8,7 +8,7 @@ const ROLE_DASHBOARD: Record<string, string> = {
   platform_admin: "/dashboard",
   orgs_manager:   "/orgs-manager",
   org_admin:      "/org-admin",
-  end_user:       "/end-user",
+  end_user:       "/shop",
 }
 
 export default function Home() {

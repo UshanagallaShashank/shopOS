@@ -12,15 +12,17 @@ class ProductCreate(BaseModel):
     price: float
     stock: int = 0
     category: str | None = None
+    images: list[str] = []
 
 
 class ProductUpdate(BaseModel):
-    # All fields optional — send only what changed
     name: str | None = None
     description: str | None = None
     price: float | None = None
     stock: int | None = None
     is_active: bool | None = None
+    category: str | None = None
+    images: list[str] | None = None
 
 
 class ProductResponse(BaseModel):
@@ -32,6 +34,9 @@ class ProductResponse(BaseModel):
     stock: int
     category: str | None
     is_active: bool
+    images: list[str] = []
+    avg_rating: float | None = None
+    review_count: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

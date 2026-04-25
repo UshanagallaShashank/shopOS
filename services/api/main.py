@@ -3,9 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import health, orgs, products, orders, users, auth, invites
+from routers import health, orgs, products, orders, users, auth, invites, org_requests, reviews
 
 app = FastAPI(title="ShopOS API", version="1.0.0")
+
+# Log CORS configuration for debugging
+print(f"[CORS] Allowed origins: {settings.allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +25,8 @@ app.include_router(products.router, prefix="/products", tags=["Products"])
 app.include_router(orders.router, prefix="/orders", tags=["Orders"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(invites.router, prefix="/invites", tags=["Invites"])
+app.include_router(org_requests.router, prefix="/org-requests", tags=["Org Requests"])
+app.include_router(reviews.router, tags=["Reviews"])
 
 
 # Debug endpoint to test token verification

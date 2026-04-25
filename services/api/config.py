@@ -1,5 +1,7 @@
 # Central config — all env vars typed and read once from .env
+import json
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -8,7 +10,19 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://shopos:shopos@localhost/shopos"
     redis_url: str = "redis://localhost:6379"
-    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    allowed_origins: list[str] | str = ["http://localhost:3000", "http://localhost:3001"]
+    
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        """Parse allowed_origins from JSON string or list"""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # If it's a single URL string, wrap it in a list
+                return [v]
+        return v
 
     # Supabase project credentials
     supabase_url: str = ""

@@ -9,6 +9,13 @@ from schemas.order import OrderCreate
 from utils.exceptions import NotFoundError
 
 
+async def list_my_orders(db: AsyncSession, user_id: uuid.UUID) -> list[Order]:
+    result = await db.execute(
+        select(Order).where(Order.user_id == user_id).order_by(Order.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def list_orders(db: AsyncSession, org_id: uuid.UUID, skip: int, limit: int) -> list[Order]:
     result = await db.execute(
         select(Order).where(Order.org_id == org_id).offset(skip).limit(limit)

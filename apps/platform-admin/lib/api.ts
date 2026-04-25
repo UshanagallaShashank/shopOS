@@ -4,6 +4,8 @@ import type {
   Product, ProductCreate, ProductUpdate,
   User, UserCreate, UserUpdate, Order,
   OrgInvite, OrgInviteCreate,
+  OrgRequest, OrgRequestCreate,
+  ProductReview, ReviewCreate, ReviewUpdate,
 } from "./types"
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -41,6 +43,9 @@ const qs = (p: Record<string, string | number | undefined>) =>
   ).toString()
 
 export const api = {
+  auth: {
+    logout: () => req<{ message: string }>("/auth/logout", { method: "POST" }),
+  },
   orgs: {
     list: (skip = 0, limit = 50) => req<Org[]>(`/orgs/?${qs({ skip, limit })}`),
     get: (id: string) => req<Org>(`/orgs/${id}`),
@@ -57,17 +62,23 @@ export const api = {
     delete: (id: string) => req<void>(`/products/${id}`, { method: "DELETE" }),
   },
   users: {
-    list: (skip = 0, limit = 100, org_id?: string) =>
+    list: (skip = 0, limit = 200, org_id?: string) =>
       req<User[]>(`/users/?${qs({ skip, limit, org_id })}`),
     get: (id: string) => req<User>(`/users/${id}`),
     create: (data: UserCreate) => req<User>("/users/", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: UserUpdate) => req<User>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => req<void>(`/users/${id}`, { method: "DELETE" }),
+    setOrgAccess: (id: string, org_ids: string[]) =>
+      req<User>(`/users/${id}/orgs`, { method: "PUT", body: JSON.stringify({ org_ids }) }),
+    myOrgs: () => req<Org[]>("/users/me/orgs"),
   },
   orders: {
     list: (orgId: string, skip = 0, limit = 50) =>
       req<Order[]>(`/orders/?${qs({ org_id: orgId, skip, limit })}`),
+    my: () => req<Order[]>("/orders/my"),
     get: (id: string) => req<Order>(`/orders/${id}`),
+    create: (data: { org_id: string; user_id: string; items: { product_id: string; quantity: number; price_at_purchase: number }[]; total: number }) =>
+      req<Order>("/orders/", { method: "POST", body: JSON.stringify(data) }),
     updateStatus: (id: string, status: string) =>
       req<Order>(`/orders/${id}/status?new_status=${status}`, { method: "PATCH" }),
   },
@@ -78,5 +89,25 @@ export const api = {
     redeem: (code: string) =>
       req<OrgInvite>("/invites/redeem", { method: "POST", body: JSON.stringify({ code }) }),
     delete: (id: string) => req<void>(`/invites/${id}`, { method: "DELETE" }),
+  },
+  reviews: {
+    list: (productId: string) => req<ProductReview[]>(`/products/${productId}/reviews`),
+    create: (productId: string, data: ReviewCreate) =>
+      req<ProductReview>(`/products/${productId}/reviews`, { method: "POST", body: JSON.stringify(data) }),
+    update: (reviewId: string, data: ReviewUpdate) =>
+      req<ProductReview>(`/reviews/${reviewId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (reviewId: string) => req<void>(`/reviews/${reviewId}`, { method: "DELETE" }),
+  },
+  orgRequests: {
+    create: (data: OrgRequestCreate) =>
+      req<OrgRequest>("/org-requests/", { method: "POST", body: JSON.stringify(data) }),
+    list: (status?: string) =>
+      req<OrgRequest[]>(`/org-requests/?${status ? `status_filter=${status}` : ""}`),
+    my: () => req<OrgRequest[]>("/org-requests/my"),
+    review: (id: string, status: "approved" | "rejected") =>
+      req<OrgRequest>(`/org-requests/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
   },
 }

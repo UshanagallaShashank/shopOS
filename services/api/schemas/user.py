@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     phone: str | None
     role: UserRole
     org_id: uuid.UUID | None
+    accessible_org_ids: list[uuid.UUID] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -15,6 +15,15 @@ from utils.pagination import paginate
 router = APIRouter()
 
 
+@router.get("/my", response_model=list[OrderResponse])
+async def list_my_orders(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Returns all orders placed by the currently authenticated user."""
+    return await order_service.list_my_orders(db, current_user.id)
+
+
 @router.get("/", response_model=list[OrderResponse])
 async def list_orders(
     org_id: uuid.UUID,
@@ -37,9 +46,11 @@ async def get_order(
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     data: OrderCreate,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Always use the authenticated user's ID — ignore any user_id in the body
+    data.user_id = current_user.id
     return await order_service.create_order(db, data)
 
 

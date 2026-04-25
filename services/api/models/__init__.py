@@ -2,8 +2,10 @@
 from models.order import Order, OrderItem
 from models.org import Org
 from models.org_invite import OrgInvite
+from models.org_request import OrgRequest
 from models.product import Product
-from models.role_request import RoleRequest
+from models.product_review import ProductReview
 from models.user import User
+from models.user_org_access import UserOrgAccess
 
-__all__ = ["Org", "OrgInvite", "User", "Product", "Order", "OrderItem", "RoleRequest"]
+__all__ = ["Org", "OrgInvite", "OrgRequest", "User", "UserOrgAccess", "Product", "ProductReview", "Order", "OrderItem"]

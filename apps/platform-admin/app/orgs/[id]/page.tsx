@@ -4,15 +4,21 @@ import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Pencil, Trash2, Plus, Users, Package, X } from "lucide-react"
+import { Pencil, Trash2, Plus, Users, Package, X, Star, ImageOff } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/hooks/useAuth"
 import { PlanBadge, StatusBadge, RoleBadge } from "@/components/badges"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import type { UserUpdate } from "@/lib/types"
 
 type Tab = "products" | "users" | "invites"
+
+type ConfirmAction =
+  | { type: "deleteOrg" }
+  | { type: "deleteProduct"; productId: string; productName: string }
+  | { type: "removeUser"; userId: string; userEmail: string }
 
 export default function OrgDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +26,7 @@ export default function OrgDetailPage() {
   const qc = useQueryClient()
   const { shopUser } = useAuth()
   const [tab, setTab] = useState<Tab>("products")
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
 
   const isPlatformAdmin = shopUser?.role === "platform_admin"
   const isOrgsManager = shopUser?.role === "orgs_manager"
@@ -52,7 +59,10 @@ export default function OrgDetailPage() {
 
   const deleteOrg = useMutation({
     mutationFn: () => api.orgs.delete(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["orgs"] }); router.push("/orgs") },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orgs"] })
+      router.push("/orgs")
+    },
   })
 
   const deleteProduct = useMutation({
@@ -68,6 +78,26 @@ export default function OrgDetailPage() {
       qc.invalidateQueries({ queryKey: ["users"] })
     },
   })
+
+  // Handle confirmation actions
+  function handleConfirm() {
+    if (!confirmAction) return
+    
+    switch (confirmAction.type) {
+      case "deleteOrg":
+        deleteOrg.mutate()
+        break
+      case "deleteProduct":
+        deleteProduct.mutate(confirmAction.productId)
+        break
+      case "removeUser":
+        updateUser.mutate({ userId: confirmAction.userId, data: { clear_org: true } })
+        break
+    }
+    setConfirmAction(null)
+  }
+
+  const isActionPending = deleteOrg.isPending || deleteProduct.isPending || updateUser.isPending
 
   if (isLoading) return <p className="text-muted-foreground text-sm">Loading…</p>
   if (!org) return <p className="text-destructive text-sm">Org not found.</p>
@@ -97,7 +127,7 @@ export default function OrgDetailPage() {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => { if (confirm(`Delete "${org.name}"?`)) deleteOrg.mutate() }}
+                onClick={() => setConfirmAction({ type: "deleteOrg" })}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
               </Button>
@@ -162,7 +192,7 @@ export default function OrgDetailPage() {
                 <table className="w-full text-sm">
                   <thead className="border-b border-border">
                     <tr>
-                      {["Name", "Price", "Stock", "Category", "Active", ""].map((h) => (
+                      {["", "Name", "Price", "Stock", "Rating", "Active", ""].map((h) => (
                         <th key={h} className="text-left px-4 py-3 text-xs text-muted-foreground uppercase tracking-wide font-medium">{h}</th>
                       ))}
                     </tr>
@@ -170,10 +200,29 @@ export default function OrgDetailPage() {
                   <tbody className="divide-y divide-border">
                     {products.map((p) => (
                       <tr key={p.id} className="hover:bg-accent/50 transition-colors">
+                        <td className="px-4 py-3">
+                          {p.images?.[0] ? (
+                            <img src={p.images[0]} alt={p.name} className="h-10 w-10 rounded object-cover border border-border" />
+                          ) : (
+                            <div className="h-10 w-10 rounded border border-border bg-accent/30 flex items-center justify-center">
+                              <ImageOff className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-medium">{p.name}</td>
                         <td className="px-4 py-3">₹{Number(p.price).toLocaleString("en-IN")}</td>
                         <td className={`px-4 py-3 ${p.stock < 5 ? "text-yellow-400 font-medium" : ""}`}>{p.stock}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{p.category ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          {p.avg_rating != null ? (
+                            <span className="flex items-center gap-1 text-sm">
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                              {p.avg_rating.toFixed(1)}
+                              <span className="text-muted-foreground text-xs">({p.review_count})</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <span className={p.is_active ? "text-green-400" : "text-muted-foreground"}>
                             {p.is_active ? "Yes" : "No"}
@@ -188,7 +237,13 @@ export default function OrgDetailPage() {
                               variant="ghost"
                               size="icon"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => { if (confirm(`Delete "${p.name}"?`)) deleteProduct.mutate(p.id) }}
+                              onClick={() =>
+                                setConfirmAction({
+                                  type: "deleteProduct",
+                                  productId: p.id,
+                                  productName: p.name,
+                                })
+                              }
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -277,10 +332,13 @@ export default function OrgDetailPage() {
                               size="icon"
                               className="text-destructive hover:text-destructive"
                               title="Remove from org"
-                              onClick={() => {
-                                if (confirm(`Remove "${u.email}" from this org?`))
-                                  updateUser.mutate({ userId: u.id, data: { clear_org: true } })
-                              }}
+                              onClick={() =>
+                                setConfirmAction({
+                                  type: "removeUser",
+                                  userId: u.id,
+                                  userEmail: u.email ?? u.id.slice(0, 12),
+                                })
+                              }
                             >
                               <X className="h-3.5 w-3.5" />
                             </Button>
@@ -294,6 +352,32 @@ export default function OrgDetailPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Confirmation dialog */}
+      {confirmAction && (
+        <ConfirmDialog
+          open={!!confirmAction}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={handleConfirm}
+          title={
+            confirmAction.type === "deleteOrg"
+              ? "Delete Organization"
+              : confirmAction.type === "deleteProduct"
+              ? "Delete Product"
+              : "Remove User"
+          }
+          description={
+            confirmAction.type === "deleteOrg"
+              ? `Are you sure you want to delete "${org?.name}"? This will also delete all products and cannot be undone.`
+              : confirmAction.type === "deleteProduct"
+              ? `Are you sure you want to delete "${confirmAction.productName}"? This action cannot be undone.`
+              : `Are you sure you want to remove "${confirmAction.userEmail}" from this organization?`
+          }
+          confirmText={confirmAction.type === "removeUser" ? "Remove" : "Delete"}
+          variant="destructive"
+          loading={isActionPending}
+        />
       )}
     </div>
   )

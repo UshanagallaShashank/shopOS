@@ -1,15 +1,23 @@
 # User service — registration with secret-key role assignment
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
-from models.role_request import RequestStatus, RoleRequest
 from models.user import User, UserRole
-from schemas.role_request import RoleRequestCreate
+from models.user_org_access import UserOrgAccess
 from schemas.user import UserCreate, UserRegister, UserUpdate
 from utils.exceptions import ConflictError, ForbiddenError, NotFoundError
+
+
+async def _attach_accessible_orgs(db: AsyncSession, user: User) -> User:
+    """Populate the transient accessible_org_ids attribute on a User instance."""
+    result = await db.execute(
+        select(UserOrgAccess.org_id).where(UserOrgAccess.user_id == user.id)
+    )
+    user.accessible_org_ids = [row[0] for row in result.all()]
+    return user
 
 
 async def list_users(db: AsyncSession, skip: int, limit: int, org_id: uuid.UUID | None = None) -> list[User]:
@@ -17,7 +25,10 @@ async def list_users(db: AsyncSession, skip: int, limit: int, org_id: uuid.UUID 
     if org_id is not None:
         q = q.where(User.org_id == org_id)
     result = await db.execute(q.offset(skip).limit(limit))
-    return list(result.scalars().all())
+    users = list(result.scalars().all())
+    for u in users:
+        await _attach_accessible_orgs(db, u)
+    return users
 
 
 async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User:
@@ -25,6 +36,7 @@ async def get_user(db: AsyncSession, user_id: uuid.UUID) -> User:
     user = result.scalar_one_or_none()
     if not user:
         raise NotFoundError(f"User {user_id} not found")
+    await _attach_accessible_orgs(db, user)
     return user
 
 
@@ -44,6 +56,7 @@ async def register_user(db: AsyncSession, supabase_uid: str, data: UserRegister)
 
     # OAuth users hit this on every login — just return the existing user
     if found:
+        await _attach_accessible_orgs(db, found)
         return found
 
     role = _resolve_role(data.secret_key)
@@ -62,7 +75,40 @@ async def register_user(db: AsyncSession, supabase_uid: str, data: UserRegister)
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    await _attach_accessible_orgs(db, user)
     return user
+
+
+async def grant_org_access(db: AsyncSession, user_id: uuid.UUID, org_id: uuid.UUID) -> None:
+    """Grant a user access to an org (idempotent)."""
+    existing = await db.execute(
+        select(UserOrgAccess).where(
+            UserOrgAccess.user_id == user_id,
+            UserOrgAccess.org_id == org_id,
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        db.add(UserOrgAccess(user_id=user_id, org_id=org_id))
+        await db.commit()
+
+
+async def revoke_org_access(db: AsyncSession, user_id: uuid.UUID, org_id: uuid.UUID) -> None:
+    """Revoke a user's access to an org."""
+    await db.execute(
+        delete(UserOrgAccess).where(
+            UserOrgAccess.user_id == user_id,
+            UserOrgAccess.org_id == org_id,
+        )
+    )
+    await db.commit()
+
+
+async def set_org_access(db: AsyncSession, user_id: uuid.UUID, org_ids: list[uuid.UUID]) -> None:
+    """Replace a user's full org access list with the provided set."""
+    await db.execute(delete(UserOrgAccess).where(UserOrgAccess.user_id == user_id))
+    for org_id in org_ids:
+        db.add(UserOrgAccess(user_id=user_id, org_id=org_id))
+    await db.commit()
 
 
 async def create_user(db: AsyncSession, data: UserCreate) -> User:
@@ -73,6 +119,8 @@ async def create_user(db: AsyncSession, data: UserCreate) -> User:
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    # accessible_org_ids not relevant for newly-created users
+    user.accessible_org_ids = []
     return user
 
 
@@ -112,66 +160,3 @@ async def update_user(
     await db.refresh(user)
     return user
 
-
-# ── Role requests ────────────────────────────────────────────────────────────
-
-async def create_role_request(
-    db: AsyncSession, user: User, data: RoleRequestCreate
-) -> RoleRequest:
-    # One pending request per user at a time
-    existing = await db.execute(
-        select(RoleRequest).where(
-            RoleRequest.user_id == user.id,
-            RoleRequest.status == RequestStatus.pending,
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise ConflictError("You already have a pending role request")
-
-    req = RoleRequest(
-        user_id=user.id,
-        requested_role="orgs_manager",  # only requestable role
-        reason=data.reason,
-    )
-    db.add(req)
-    await db.commit()
-    await db.refresh(req)
-    return req
-
-
-async def list_role_requests(
-    db: AsyncSession, status_filter: RequestStatus | None = None
-) -> list[RoleRequest]:
-    q = select(RoleRequest)
-    if status_filter:
-        q = q.where(RoleRequest.status == status_filter)
-    result = await db.execute(q.order_by(RoleRequest.created_at.desc()))
-    return list(result.scalars().all())
-
-
-async def review_role_request(
-    db: AsyncSession,
-    request_id: uuid.UUID,
-    new_status: RequestStatus,
-    reviewer: User,
-) -> RoleRequest:
-    result = await db.execute(select(RoleRequest).where(RoleRequest.id == request_id))
-    req = result.scalar_one_or_none()
-    if not req:
-        raise NotFoundError(f"Role request {request_id} not found")
-    if req.status != RequestStatus.pending:
-        raise ConflictError("Request already reviewed")
-
-    req.status = new_status
-    req.reviewed_by = reviewer.id
-
-    # If approved — promote the user
-    if new_status == RequestStatus.approved:
-        user_result = await db.execute(select(User).where(User.id == req.user_id))
-        user = user_result.scalar_one_or_none()
-        if user:
-            user.role = UserRole.orgs_manager
-
-    await db.commit()
-    await db.refresh(req)
-    return req

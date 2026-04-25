@@ -9,10 +9,12 @@ import { useAuth } from "@/lib/hooks/useAuth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RoleBadge } from "@/components/badges"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function AdminPage() {
   const { shopUser } = useAuth()
   const qc = useQueryClient()
+  const [demoteUser, setDemoteUser] = useState<{ id: string; email: string } | null>(null)
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["users"],
@@ -22,7 +24,10 @@ export default function AdminPage() {
   const updateUser = useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) =>
       api.users.update(id, { role: role as any }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] })
+      setDemoteUser(null)
+    },
   })
 
   const admins = users.filter(
@@ -104,11 +109,7 @@ export default function AdminPage() {
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive text-xs"
-                          disabled={updateUser.isPending}
-                          onClick={() => {
-                            if (confirm(`Demote "${u.email}" to end_user?`))
-                              updateUser.mutate({ id: u.id, role: "end_user" })
-                          }}
+                          onClick={() => setDemoteUser({ id: u.id, email: u.email || "this user" })}
                         >
                           Demote
                         </Button>

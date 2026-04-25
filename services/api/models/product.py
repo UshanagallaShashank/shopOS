@@ -2,7 +2,7 @@
 import uuid
 
 from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -22,3 +22,5 @@ class Product(UUIDPrimaryKey, Timestamps, Base):
     stock: Mapped[int] = mapped_column(Integer, default=0)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Ordered list of image URLs/data-URLs; index = display order
+    images: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)

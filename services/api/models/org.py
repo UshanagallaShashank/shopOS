@@ -1,7 +1,7 @@
 # Org — one row per shop (Meena Boutique, Ravi Groceries, etc.)
 import enum
 
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -28,3 +28,11 @@ class Org(UUIDPrimaryKey, Timestamps, Base):
     status: Mapped[OrgStatus] = mapped_column(Enum(OrgStatus, name="org_status"), default=OrgStatus.active)
     plan: Mapped[PlanType] = mapped_column(Enum(PlanType, name="plan_type"), default=PlanType.starter)
     razorpay_sub_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Profile / branding fields
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    logo: Mapped[str | None] = mapped_column(Text, nullable=True)  # data URL
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True)

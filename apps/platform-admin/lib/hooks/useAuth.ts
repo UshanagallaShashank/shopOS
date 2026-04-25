@@ -51,10 +51,33 @@ export function useAuth() {
   useEffect(() => { fetchUser() }, [fetchUser])
 
   function signOut() {
+    console.log("[useAuth] Signing out...")
+    
+    // Clear localStorage
     localStorage.removeItem("shopos_token")
+    
+    // Clear all shopos_token cookies (try different paths)
+    document.cookie = "shopos_token=; max-age=0; path=/; domain=" + window.location.hostname
     document.cookie = "shopos_token=; max-age=0; path=/"
+    document.cookie = "shopos_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+    
+    // Clear any Supabase auth cookies
+    const cookies = document.cookie.split(";")
+    for (let cookie of cookies) {
+      const eqPos = cookie.indexOf("=")
+      const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim()
+      if (name.includes("sb-") || name.includes("supabase")) {
+        document.cookie = name + "=; max-age=0; path=/; domain=" + window.location.hostname
+        document.cookie = name + "=; max-age=0; path=/"
+      }
+    }
+    
+    // Clear user state
     setShopUser(null)
-    window.location.href = "/login"
+    
+    // Force a hard redirect to clear any cached state
+    console.log("[useAuth] Redirecting to login...")
+    window.location.replace("/login")
   }
 
   // Expose token so API calls can use it
