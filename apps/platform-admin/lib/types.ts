@@ -1,6 +1,8 @@
 // TypeScript types — mirror the Pydantic schemas in the backend exactly
 export type PlanType = "starter" | "pro" | "enterprise"
 export type OrgStatus = "active" | "suspended" | "maintenance"
+export type UserRole = "platform_admin" | "orgs_manager" | "org_admin" | "end_user"
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
 
 export interface Org {
   id: string
@@ -11,17 +13,8 @@ export interface Org {
   created_at: string
 }
 
-export interface OrgCreate {
-  name: string
-  slug: string
-  plan: PlanType
-}
-
-export interface OrgUpdate {
-  name?: string
-  status?: OrgStatus
-  plan?: PlanType
-}
+export interface OrgCreate { name: string; slug: string; plan: PlanType }
+export interface OrgUpdate { name?: string; status?: OrgStatus; plan?: PlanType }
 
 export interface Product {
   id: string
@@ -36,17 +29,37 @@ export interface Product {
 }
 
 export interface ProductCreate {
-  org_id: string
-  name: string
-  price: number
-  stock?: number
-  category?: string
-  description?: string
+  org_id: string; name: string; price: number
+  stock?: number; category?: string; description?: string
+}
+export interface ProductUpdate {
+  name?: string; price?: number; stock?: number; is_active?: boolean
 }
 
-export interface ProductUpdate {
-  name?: string
-  price?: number
-  stock?: number
-  is_active?: boolean
+export interface User {
+  id: string
+  firebase_uid: string
+  email: string | null
+  phone: string | null
+  role: UserRole
+  org_id: string | null
+  created_at: string
+}
+
+export interface UserCreate {
+  firebase_uid: string
+  email?: string
+  phone?: string
+  role: UserRole
+  org_id?: string
+}
+
+export interface Order {
+  id: string
+  org_id: string
+  user_id: string
+  status: OrderStatus
+  total: number
+  razorpay_order_id: string | null
+  created_at: string
 }

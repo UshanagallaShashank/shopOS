@@ -1,5 +1,9 @@
 // API client — thin fetch wrapper, all routes in one place
-import type { Org, OrgCreate, OrgUpdate, Product, ProductCreate, ProductUpdate } from "./types"
+import type {
+  Org, OrgCreate, OrgUpdate,
+  Product, ProductCreate, ProductUpdate,
+  User, UserCreate, Order,
+} from "./types"
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
@@ -13,7 +17,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json()
 }
 
-// Build query string, skipping undefined values
+// Builds ?key=value query string, skips undefined values
 const qs = (p: Record<string, string | number | undefined>) =>
   new URLSearchParams(
     Object.entries(p).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
@@ -34,5 +38,18 @@ export const api = {
     create: (data: ProductCreate) => req<Product>("/products/", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: ProductUpdate) => req<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => req<void>(`/products/${id}`, { method: "DELETE" }),
+  },
+  users: {
+    list: (skip = 0, limit = 50) => req<User[]>(`/users/?${qs({ skip, limit })}`),
+    get: (id: string) => req<User>(`/users/${id}`),
+    create: (data: UserCreate) => req<User>("/users/", { method: "POST", body: JSON.stringify(data) }),
+    delete: (id: string) => req<void>(`/users/${id}`, { method: "DELETE" }),
+  },
+  orders: {
+    list: (orgId: string, skip = 0, limit = 50) =>
+      req<Order[]>(`/orders/?${qs({ org_id: orgId, skip, limit })}`),
+    get: (id: string) => req<Order>(`/orders/${id}`),
+    updateStatus: (id: string, status: string) =>
+      req<Order>(`/orders/${id}/status?new_status=${status}`, { method: "PATCH" }),
   },
 }

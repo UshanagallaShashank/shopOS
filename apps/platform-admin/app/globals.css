@@ -2,9 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  /* Reusable input style — used in all forms */
-  .input {
-    @apply w-full bg-[#1A1A2E] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#E94560] transition-colors;
+/*
+  shadcn uses CSS variables for theming.
+  We define a dark theme that matches ShopOS brand colors.
+  --primary is our brand red (#E94560).
+*/
+@layer base {
+  :root {
+    --background: 222 47% 6%;        /* near-black navy */
+    --foreground: 210 40% 98%;       /* off-white text */
+    --card: 222 47% 9%;              /* slightly lighter card bg */
+    --card-foreground: 210 40% 98%;
+    --primary: 349 78% 57%;          /* #E94560 brand red */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 14%;        /* dark navy for secondary elements */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 47% 14%;
+    --muted-foreground: 215 20% 55%; /* gray text */
+    --accent: 222 47% 14%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 47% 14%;           /* subtle borders */
+    --input: 222 47% 14%;
+    --ring: 349 78% 57%;             /* focus ring = brand red */
+    --radius: 0.5rem;
   }
+}
+
+@layer base {
+  body { @apply bg-background text-foreground; }
 }
