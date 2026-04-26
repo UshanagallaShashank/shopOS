@@ -17,9 +17,23 @@ const STATUS_VARIANT: Record<OrgStatus, "success" | "destructive" | "warning"> =
 const ORDER_VARIANT: Record<OrderStatus, "secondary" | "warning" | "default" | "success" | "destructive"> = {
   pending: "secondary",
   confirmed: "warning",
+  processing: "warning",
   shipped: "default",
+  out_for_delivery: "default",
   delivered: "success",
   cancelled: "destructive",
+  refunded: "destructive",
+}
+
+const ORDER_LABEL: Record<OrderStatus, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  processing: "Processing",
+  shipped: "Shipped",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 }
 
 const ROLE_VARIANT: Record<UserRole, "default" | "outline" | "secondary" | "warning"> = {
@@ -38,7 +52,7 @@ export function StatusBadge({ status }: { status: OrgStatus }) {
 }
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge variant={ORDER_VARIANT[status]}>{status}</Badge>
+  return <Badge variant={ORDER_VARIANT[status]}>{ORDER_LABEL[status]}</Badge>
 }
 
 export function RoleBadge({ role }: { role: UserRole }) {

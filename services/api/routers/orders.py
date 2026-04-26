@@ -1,4 +1,4 @@
-# Order routes — create orders and update status (e.g. shipped, delivered)
+# Order routes — CRUD + status management
 import uuid
 
 from fastapi import APIRouter, Depends, status
@@ -8,7 +8,7 @@ from database import get_db
 from middleware.auth import get_current_user, require_org_admin_or_above
 from models.order import OrderStatus
 from models.user import User
-from schemas.order import OrderCreate, OrderResponse
+from schemas.order import OrderCreate, OrderResponse, OrderUpdate
 from services import order_service
 from utils.pagination import paginate
 
@@ -20,7 +20,6 @@ async def list_my_orders(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns all orders placed by the currently authenticated user."""
     return await order_service.list_my_orders(db, current_user.id)
 
 
@@ -49,7 +48,6 @@ async def create_order(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Always use the authenticated user's ID — ignore any user_id in the body
     data.user_id = current_user.id
     return await order_service.create_order(db, data)
 
@@ -62,3 +60,13 @@ async def update_order_status(
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.update_order_status(db, order_id, new_status)
+
+
+@router.patch("/{order_id}", response_model=OrderResponse)
+async def update_order(
+    order_id: uuid.UUID,
+    data: OrderUpdate,
+    _: User = Depends(require_org_admin_or_above),
+    db: AsyncSession = Depends(get_db),
+):
+    return await order_service.update_order(db, order_id, data)

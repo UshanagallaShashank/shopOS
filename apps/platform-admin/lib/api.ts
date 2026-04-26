@@ -2,7 +2,7 @@
 import type {
   Org, OrgCreate, OrgUpdate, OrgUIUpdate,
   Product, ProductCreate, ProductUpdate,
-  User, UserCreate, UserUpdate, Order,
+  User, UserCreate, UserUpdate, Order, OrderCreate, OrderUpdate,
   OrgInvite, OrgInviteCreate,
   OrgRequest, OrgRequestCreate,
   ProductReview, ReviewCreate, ReviewUpdate,
@@ -12,16 +12,15 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
-  const token = localStorage.getItem("shopos_token")
-    ?? document.cookie.match(/shopos_token=([^;]+)/)?.[1]
-    ?? null
-  console.log("[API] Getting token:", token ? `${token.substring(0, 20)}...` : "NO TOKEN")
-  return token
+  return (
+    localStorage.getItem("shopos_token") ??
+    document.cookie.match(/shopos_token=([^;]+)/)?.[1] ??
+    null
+  )
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
-  console.log("[API] Making request to:", path, "with token:", !!token)
   const res = await fetch(`${BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
@@ -30,13 +29,11 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     },
     ...init,
   })
-  console.log("[API] Response status:", res.status, "for:", path)
   if (!res.ok) throw new Error((await res.text()) || `HTTP ${res.status}`)
   if (res.status === 204) return undefined as T
   return res.json()
 }
 
-// Builds ?key=value query string, skips undefined values
 const qs = (p: Record<string, string | number | undefined>) =>
   new URLSearchParams(
     Object.entries(p).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
@@ -74,14 +71,16 @@ export const api = {
     myOrgs: () => req<Org[]>("/users/me/orgs"),
   },
   orders: {
-    list: (orgId: string, skip = 0, limit = 50) =>
+    list: (orgId: string, skip = 0, limit = 100) =>
       req<Order[]>(`/orders/?${qs({ org_id: orgId, skip, limit })}`),
     my: () => req<Order[]>("/orders/my"),
     get: (id: string) => req<Order>(`/orders/${id}`),
-    create: (data: { org_id: string; user_id: string; items: { product_id: string; quantity: number; price_at_purchase: number }[]; total: number }) =>
+    create: (data: OrderCreate) =>
       req<Order>("/orders/", { method: "POST", body: JSON.stringify(data) }),
     updateStatus: (id: string, status: string) =>
       req<Order>(`/orders/${id}/status?new_status=${status}`, { method: "PATCH" }),
+    update: (id: string, data: OrderUpdate) =>
+      req<Order>(`/orders/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   },
   invites: {
     create: (data: OrgInviteCreate) =>

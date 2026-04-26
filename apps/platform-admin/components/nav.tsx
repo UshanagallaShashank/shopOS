@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
   LayoutDashboard, Building2, Users, ShieldCheck,
@@ -114,6 +114,7 @@ function Avatar({ text, size = "md", src }: { text: string; size?: "sm" | "md" |
 // ── Main nav ───────────────────────────────────────────────────────────────
 export function Nav() {
   const path = usePathname()
+  const searchParams = useSearchParams()
   const { shopUser, signOut } = useAuth()
   const role = shopUser?.role as UserRole | undefined
 
@@ -219,10 +220,11 @@ export function Nav() {
               <span className="ml-auto text-[10px] text-muted-foreground/60">↗</span>
             </Link>
             <Link
-              href="/org-admin"
-              onClick={() => {}}
+              href="/org-admin?tab=storefront"
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all group ${
-                path.includes("storefront") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                path === "/org-admin" && searchParams.get("tab") === "storefront"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               }`}
             >
               <LayoutTemplate className="h-4 w-4 shrink-0 group-hover:scale-110 transition-transform" />

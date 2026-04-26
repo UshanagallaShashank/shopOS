@@ -2,7 +2,8 @@
 export type PlanType = "starter" | "pro" | "enterprise"
 export type OrgStatus = "active" | "suspended" | "maintenance"
 export type UserRole = "platform_admin" | "orgs_manager" | "org_admin" | "end_user"
-export type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"
+export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "out_for_delivery" | "delivered" | "cancelled" | "refunded"
+export type NotificationType = "order_placed" | "order_confirmed" | "order_shipped" | "order_delivered" | "order_cancelled" | "low_stock" | "org_request_approved" | "org_request_rejected" | "new_review" | "payment_received"
 
 export interface Org {
   id: string
@@ -38,6 +39,28 @@ export interface OrgUIUpdate {
   primary_color?: string | null
 }
 
+export interface ProductVariant {
+  id: string
+  product_id: string
+  sku: string | null
+  color: string | null
+  size: string | null
+  price_adjustment: number
+  stock: number
+  is_active: boolean
+  image_url: string | null
+  created_at: string
+}
+
+export interface ProductVariantCreate {
+  sku?: string
+  color?: string
+  size?: string
+  price_adjustment?: number
+  stock?: number
+  image_url?: string
+}
+
 export interface Product {
   id: string
   org_id: string
@@ -48,8 +71,19 @@ export interface Product {
   category: string | null
   is_active: boolean
   images: string[]
+  weight: number | null
+  dimensions: string | null
+  material: string | null
+  brand: string | null
+  shipping_cost: number
+  free_shipping_threshold: number | null
+  estimated_delivery_days: number | null
+  tags: string[]
+  meta_title: string | null
+  meta_description: string | null
   avg_rating: number | null
   review_count: number
+  variants?: ProductVariant[]
   created_at: string
 }
 
@@ -57,10 +91,18 @@ export interface ProductCreate {
   org_id: string; name: string; price: number
   stock?: number; category?: string; description?: string
   images?: string[]
+  weight?: number; dimensions?: string; material?: string; brand?: string
+  shipping_cost?: number; free_shipping_threshold?: number
+  estimated_delivery_days?: number; tags?: string[]
+  meta_title?: string; meta_description?: string
 }
 export interface ProductUpdate {
   name?: string; price?: number; stock?: number; is_active?: boolean
   description?: string; category?: string; images?: string[]
+  weight?: number; dimensions?: string; material?: string; brand?: string
+  shipping_cost?: number; free_shipping_threshold?: number
+  estimated_delivery_days?: number; tags?: string[]
+  meta_title?: string; meta_description?: string
 }
 
 export interface ProductReview {
@@ -102,6 +144,17 @@ export interface UserUpdate {
   clear_org?: boolean
 }
 
+export interface OrderItem {
+  id: string
+  order_id: string
+  product_id: string
+  variant_id: string | null
+  quantity: number
+  price_at_purchase: number
+  product_name: string | null
+  variant_details: string | null
+}
+
 export interface Order {
   id: string
   org_id: string
@@ -109,6 +162,92 @@ export interface Order {
   status: OrderStatus
   total: number
   razorpay_order_id: string | null
+  shipping_address: string | null
+  shipping_city: string | null
+  shipping_state: string | null
+  shipping_pincode: string | null
+  shipping_phone: string | null
+  tracking_number: string | null
+  courier_name: string | null
+  estimated_delivery: string | null
+  actual_delivery: string | null
+  customer_notes: string | null
+  admin_notes: string | null
+  items?: OrderItem[]
+  created_at: string
+}
+
+export interface OrderCreate {
+  org_id: string
+  user_id: string
+  items: {
+    product_id: string
+    variant_id?: string
+    quantity: number
+    price_at_purchase: number
+  }[]
+  total: number
+  shipping_address?: string
+  shipping_city?: string
+  shipping_state?: string
+  shipping_pincode?: string
+  shipping_phone?: string
+  customer_notes?: string
+}
+
+export interface OrderUpdate {
+  status?: OrderStatus
+  tracking_number?: string
+  courier_name?: string
+  estimated_delivery?: string
+  admin_notes?: string
+}
+
+export interface CartItem {
+  id: string
+  user_id: string
+  org_id: string
+  product_id: string
+  variant_id: string | null
+  quantity: number
+  product?: Product
+  variant?: ProductVariant
+  created_at: string
+}
+
+export interface CartItemCreate {
+  product_id: string
+  variant_id?: string
+  quantity: number
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  message: string
+  order_id: string | null
+  org_id: string | null
+  is_read: boolean
+  read_at: string | null
+  email_sent: boolean
+  email_sent_at: string | null
+  created_at: string
+}
+
+export interface PaymentLedger {
+  id: string
+  org_id: string
+  order_id: string | null
+  user_id: string | null
+  transaction_type: "order_payment" | "refund" | "platform_fee" | "payout" | "subscription"
+  amount: number
+  platform_fee: number
+  org_revenue: number
+  payment_gateway: string | null
+  gateway_transaction_id: string | null
+  notes: string | null
   created_at: string
 }
 

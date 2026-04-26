@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/hooks/useAuth"
-import { useCart } from "@/lib/hooks/useCart"
+import { useCartContext } from "@/components/cart-context"
 import { Button } from "@/components/ui/button"
 import { TemplateShell } from "@/components/template-shell"
 import type { ReviewCreate } from "@/lib/types"
@@ -41,7 +41,7 @@ function ClickableStars({ value, onChange }: { value: number; onChange: (v: numb
 
 function CartDrawer({ orgId, userId, onClose }: { orgId: string; userId: string; onClose: () => void }) {
   const qc = useQueryClient()
-  const { items, count, total, setQty, remove, clear } = useCart(orgId)
+  const { items, count, total, setQty, remove, clear } = useCartContext()
   const [placed, setPlaced] = useState(false)
   const [err, setErr] = useState("")
 
@@ -88,8 +88,8 @@ function CartDrawer({ orgId, userId, onClose }: { orgId: string; userId: string;
                   <p className="text-sm text-muted-foreground">Your cart is empty.</p>
                 </div>
               )}
-              {items.map(({ product, qty }) => (
-                <div key={product.id} className="flex gap-3 p-3 rounded-xl border border-border bg-background/50">
+              {items.map(({ product, variant, qty }) => (
+                <div key={`${product.id}::${variant?.id ?? "base"}`} className="flex gap-3 p-3 rounded-xl border border-border bg-background/50">
                   {product.images?.[0] ? (
                     <img src={product.images[0]} alt={product.name} className="h-14 w-14 rounded-lg object-contain bg-muted shrink-0 border border-border" />
                   ) : (
@@ -99,18 +99,19 @@ function CartDrawer({ orgId, userId, onClose }: { orgId: string; userId: string;
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate text-foreground">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">₹{Number(product.price).toLocaleString("en-IN")}</p>
+                    {variant && <p className="text-[11px] text-muted-foreground">{[variant.color, variant.size].filter(Boolean).join(" · ")}</p>}
+                    <p className="text-xs text-muted-foreground">₹{Number(product.price + (variant?.price_adjustment ?? 0)).toLocaleString("en-IN")}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <button onClick={() => setQty(product.id, qty - 1)}
+                      <button onClick={() => setQty(product.id, variant?.id ?? null, qty - 1)}
                         className="h-6 w-6 rounded-md border border-border hover:bg-accent flex items-center justify-center transition-colors">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="text-sm font-bold w-5 text-center text-foreground">{qty}</span>
-                      <button onClick={() => setQty(product.id, qty + 1)} disabled={qty >= product.stock}
+                      <button onClick={() => setQty(product.id, variant?.id ?? null, qty + 1)} disabled={qty >= (variant?.stock ?? product.stock)}
                         className="h-6 w-6 rounded-md border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40">
                         <Plus className="h-3 w-3" />
                       </button>
-                      <button onClick={() => remove(product.id)} className="ml-auto text-muted-foreground hover:text-destructive transition-colors">
+                      <button onClick={() => remove(product.id, variant?.id ?? null)} className="ml-auto text-muted-foreground hover:text-destructive transition-colors">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -143,7 +144,7 @@ export default function ProductDetailPage() {
   const { shopUser } = useAuth()
   const qc = useQueryClient()
 
-  const { add, setQty, count, total, items } = useCart(orgId)
+  const { add, setQty, count, total, items } = useCartContext()
   const [cartOpen, setCartOpen] = useState(false)
   const [imgIdx, setImgIdx] = useState(0)
   const [rating, setRating] = useState(0)
@@ -291,12 +292,12 @@ export default function ProductDetailPage() {
                 ) : inCart ? (
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-3 flex-1 justify-center rounded-xl border border-border bg-card p-3">
-                      <button onClick={() => setQty(product.id, inCart.qty - 1)}
+                      <button onClick={() => setQty(product.id, inCart.variant?.id ?? null, inCart.qty - 1)}
                         className="h-9 w-9 rounded-xl border border-border flex items-center justify-center hover:bg-accent transition-colors">
                         <Minus className="h-4 w-4 text-foreground" />
                       </button>
                       <span className="text-xl font-bold w-8 text-center text-foreground">{inCart.qty}</span>
-                      <button onClick={() => setQty(product.id, inCart.qty + 1)} disabled={inCart.qty >= product.stock}
+                      <button onClick={() => setQty(product.id, inCart.variant?.id ?? null, inCart.qty + 1)} disabled={inCart.qty >= (inCart.variant?.stock ?? product.stock)}
                         className="h-9 w-9 rounded-xl border border-primary bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-opacity">
                         <Plus className="h-4 w-4" />
                       </button>

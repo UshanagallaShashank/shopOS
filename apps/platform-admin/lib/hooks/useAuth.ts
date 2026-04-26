@@ -34,11 +34,16 @@ export function useAuth() {
         headers: { Authorization: `Bearer ${token}` },
       })
       console.log("[useAuth] /users/me response status:", res.status)
-      if (res.ok) setShopUser(await res.json())
-      else { 
+      if (res.ok) {
+        setShopUser(await res.json())
+      } else {
         console.error("[useAuth] Failed to fetch user, removing token")
-        localStorage.removeItem("shopos_token"); 
-        setShopUser(null) 
+        localStorage.removeItem("shopos_token")
+        document.cookie = "shopos_token=; max-age=0; path=/"
+        setShopUser(null)
+        if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.replace("/login")
+        }
       }
     } catch (err) {
       console.error("[useAuth] Error fetching user:", err)

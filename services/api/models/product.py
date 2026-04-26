@@ -24,3 +24,19 @@ class Product(UUIDPrimaryKey, Timestamps, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Ordered list of image URLs/data-URLs; index = display order
     images: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    
+    # Product attributes
+    weight: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # in kg
+    dimensions: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g., "10x20x30 cm"
+    material: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    
+    # Shipping
+    shipping_cost: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    free_shipping_threshold: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    estimated_delivery_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    # SEO & metadata
+    tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)  # ["summer", "casual"]
+    meta_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meta_description: Mapped[str | None] = mapped_column(Text, nullable=True)

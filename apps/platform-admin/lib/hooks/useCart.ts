@@ -3,19 +3,25 @@ import type { Product } from "@/lib/types"
 
 export type CartItem = { product: Product; qty: number }
 
+function loadCart(key: string): CartItem[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
 export function useCart(orgId: string) {
   const key = `shopos_cart_${orgId}`
 
-  const [items, setItems] = useState<CartItem[]>([])
+  const [items, setItems] = useState<CartItem[]>(() => loadCart(key))
 
-  // Hydrate from localStorage after mount
+  // Re-load if orgId changes (switching shops)
   useEffect(() => {
-    if (!orgId) return
-    try {
-      const stored = localStorage.getItem(key)
-      if (stored) setItems(JSON.parse(stored))
-    } catch { /* ignore */ }
-  }, [key, orgId])
+    setItems(loadCart(key))
+  }, [key])
 
   // Persist on every change
   useEffect(() => {
@@ -42,7 +48,7 @@ export function useCart(orgId: string) {
       setItems((prev) => prev.filter((i) => i.product.id !== productId))
     } else {
       setItems((prev) =>
-        prev.map((i) => i.product.id === productId ? { ...i, qty } : i)
+        prev.map((i) => (i.product.id === productId ? { ...i, qty } : i))
       )
     }
   }, [])

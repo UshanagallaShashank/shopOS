@@ -32,7 +32,8 @@ async def get_current_user(
         payload = verify_supabase_token(
             token.credentials,
             settings.supabase_url,
-            settings.supabase_jwt_secret
+            settings.supabase_jwt_secret,
+            settings.supabase_anon_key,
         )
         logger.info(f"Token verified successfully for sub: {payload.get('sub')}")
         

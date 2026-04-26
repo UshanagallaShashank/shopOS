@@ -2,7 +2,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { Providers } from "./providers"
-import { Nav } from "@/components/nav"
+import { ImprovedNav } from "@/components/improved-nav"
 import { headers } from "next/headers"
 
 export const metadata: Metadata = {
@@ -14,20 +14,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Read the current path to decide whether to show the sidebar
   const headersList = await headers()
   const pathname = headersList.get("x-invoke-path") ?? ""
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/auth")
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/auth") || pathname.startsWith("/signup")
 
   return (
     <html lang="en" className="dark">
       <body className="bg-background text-foreground antialiased">
         <Providers>
           {isAuthPage ? (
-            // Auth pages (login) — full screen, no sidebar
+            // Auth pages (login/signup) — full screen, no sidebar
             <>{children}</>
           ) : (
-            // App pages — sidebar + main content
+            // App pages — improved sidebar + main content
             <div className="flex h-screen overflow-hidden">
-              <Nav />
-              <main className="flex-1 overflow-auto p-8">{children}</main>
+              <ImprovedNav />
+              <main className="flex-1 overflow-auto p-4 lg:p-8">{children}</main>
             </div>
           )}
         </Providers>
