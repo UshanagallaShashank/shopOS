@@ -1,12 +1,12 @@
 "use client"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import {
   Building2, Users, TrendingUp, AlertTriangle, CheckCircle2,
   Plus, ArrowRight, Crown, Zap, Rocket, ShieldCheck, ClipboardList,
-  Activity, UserCheck,
+  Activity, UserCheck, Clock, XCircle,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/hooks/useAuth"
@@ -65,6 +65,10 @@ export default function DashboardPage() {
     queryKey: ["users"], queryFn: () => api.users.list(),
     enabled: shopUser?.role === "platform_admin",
   })
+  const { data: orgRequests = [] } = useQuery({
+    queryKey: ["org-requests"], queryFn: () => api.orgRequests.list(),
+    enabled: shopUser?.role === "platform_admin",
+  })
 
   if (authLoading || !shopUser || shopUser.role !== "platform_admin") {
     return <div className="text-muted-foreground text-sm">Loading...</div>
@@ -75,6 +79,7 @@ export default function DashboardPage() {
   const maintenance = orgs.filter((o) => o.status === "maintenance").length
   const orgAdmins = users.filter((u) => u.role === "org_admin").length
   const endUsers  = users.filter((u) => u.role === "end_user").length
+  const pendingRequests = orgRequests.filter(r => r.status === "pending").length
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -253,6 +258,112 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+            </CardContent>
+          </Card>
+          {/* Recent signups + pending requests row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Recent users */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-blue-400" /> Recent Signups
+                  </CardTitle>
+                  <Link href="/users" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    All users <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {users.slice(0, 5).map(u => (
+                  <div key={u.id} className="flex items-center gap-3 py-1">
+                    <div className="h-7 w-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {u.email?.[0]?.toUpperCase() ?? "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{u.email ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{u.role.replace(/_/g, " ")}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-1 shrink-0">
+                      <Clock className="h-3 w-3" />
+                      {new Date(u.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                ))}
+                {users.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No users yet</p>}
+              </CardContent>
+            </Card>
+
+            {/* Pending requests */}
+            <Card className={pendingRequests > 0 ? "border-orange-500/20" : ""}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-orange-400" /> Org Requests
+                    {pendingRequests > 0 && (
+                      <span className="h-5 min-w-[20px] px-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {pendingRequests}
+                      </span>
+                    )}
+                  </CardTitle>
+                  <Link href="/admin/org-requests" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    Review <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {orgRequests.slice(0, 5).map(r => (
+                  <div key={r.id} className="flex items-center gap-3 py-1">
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${
+                      r.status === "approved" ? "bg-green-400" :
+                      r.status === "rejected" ? "bg-destructive" : "bg-orange-400"
+                    }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{r.org_name}</p>
+                      <p className="text-xs text-muted-foreground">{r.user_email ?? "unknown"}</p>
+                    </div>
+                    <span className={`text-[10px] font-semibold capitalize ${
+                      r.status === "approved" ? "text-green-400" :
+                      r.status === "rejected" ? "text-destructive" : "text-orange-400"
+                    }`}>{r.status}</span>
+                  </div>
+                ))}
+                {orgRequests.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No requests yet</p>}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Platform health summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Platform Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: "Active Orgs",    value: active,       max: orgs.length,    color: "bg-green-400/70",   icon: CheckCircle2, iconColor: "text-green-400" },
+                  { label: "Suspended",      value: suspended,    max: orgs.length,    color: "bg-destructive/60", icon: XCircle,      iconColor: "text-destructive" },
+                  { label: "Maintenance",    value: maintenance,  max: orgs.length,    color: "bg-yellow-400/60",  icon: Clock,        iconColor: "text-yellow-400" },
+                  { label: "Pending Reqs",   value: pendingRequests, max: Math.max(orgRequests.length, 1), color: "bg-orange-400/60", icon: ClipboardList, iconColor: "text-orange-400" },
+                ].map(({ label, value, max, color, icon: Icon, iconColor }) => {
+                  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+                  return (
+                    <div key={label} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Icon className={`h-3.5 w-3.5 ${iconColor}`} />{label}
+                        </span>
+                        <span className="font-bold">{value}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </CardContent>
           </Card>
         </>

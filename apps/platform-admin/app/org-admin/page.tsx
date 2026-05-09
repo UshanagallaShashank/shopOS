@@ -1,5 +1,5 @@
 "use client"
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -405,6 +405,42 @@ export default function OrgAdminDashboard() {
   const revenue = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + Number(o.total), 0)
   const tpl = getTemplate(org?.ui_template)
 
+  const monthlyRevenue = useMemo(() => {
+    const now = new Date()
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      const label = d.toLocaleString("en-IN", { month: "short" })
+      const rev = orders
+        .filter(o => {
+          if (o.status !== "delivered") return false
+          const c = new Date(o.created_at)
+          return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth()
+        })
+        .reduce((s, o) => s + Number(o.total), 0)
+      const count = orders.filter(o => {
+        const c = new Date(o.created_at)
+        return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth()
+      }).length
+      return { label, rev, count }
+    })
+  }, [orders])
+  const maxMonthlyRev = Math.max(...monthlyRevenue.map(m => m.rev), 1)
+
+  const orderStatusFlow = useMemo(() => ([
+    { status: "pending",   label: "Pending",   count: orders.filter(o => o.status === "pending").length,   color: "bg-orange-400", text: "text-orange-400" },
+    { status: "confirmed", label: "Confirmed", count: orders.filter(o => o.status === "confirmed").length, color: "bg-blue-400",   text: "text-blue-400" },
+    { status: "shipped",   label: "Shipped",   count: orders.filter(o => ["shipped","out_for_delivery"].includes(o.status)).length, color: "bg-violet-400", text: "text-violet-400" },
+    { status: "delivered", label: "Delivered", count: orders.filter(o => o.status === "delivered").length, color: "bg-green-400",  text: "text-green-400" },
+    { status: "cancelled", label: "Cancelled", count: orders.filter(o => o.status === "cancelled").length, color: "bg-muted",      text: "text-muted-foreground" },
+  ]), [orders])
+
+  const topProducts = useMemo(() =>
+    [...products]
+      .filter(p => p.is_active)
+      .sort((a, b) => (b.review_count - a.review_count) || ((b.avg_rating ?? 0) - (a.avg_rating ?? 0)))
+      .slice(0, 5)
+  , [products])
+
   return (
     <div ref={topRef} className="space-y-6">
 
@@ -505,6 +541,111 @@ export default function OrgAdminDashboard() {
                 </Link>
               )
             ))}
+          </div>
+
+          {/* ── Revenue trend chart ── */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" /> Revenue Trend — Last 6 Months
+                </CardTitle>
+                <span className="text-sm font-bold text-emerald-400">
+                  {revenue >= 1000 ? `₹${(revenue / 1000).toFixed(1)}k` : `₹${revenue.toLocaleString("en-IN")}`} total
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {revenue === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">No delivered orders yet</div>
+              ) : (
+                <div className="flex items-end gap-2 h-28">
+                  {monthlyRevenue.map((m, i) => {
+                    const pct = maxMonthlyRev > 0 ? Math.max(4, (m.rev / maxMonthlyRev) * 100) : 4
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                        <span className="text-[10px] font-bold text-foreground leading-none">
+                          {m.rev > 0 ? (m.rev >= 1000 ? `₹${(m.rev/1000).toFixed(1)}k` : `₹${m.rev}`) : ""}
+                        </span>
+                        <div className="flex-1 w-full flex items-end">
+                          <div className={`w-full rounded-t-sm transition-all ${i === 5 ? "bg-primary" : "bg-primary/35"}`}
+                            style={{ height: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Order funnel + top products ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Order funnel */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-primary" /> Order Funnel
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2.5">
+                {orderStatusFlow.map(({ status, label, count, color, text }) => {
+                  const pct = orders.length > 0 ? Math.round((count / orders.length) * 100) : 0
+                  return (
+                    <div key={status} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={`font-medium ${text}`}>{label}</span>
+                        <span className="text-muted-foreground">{count} · {pct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Top products */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400" /> Top Products
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {topProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No products yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {topProducts.map((p, i) => (
+                      <div key={p.id} className="flex items-center gap-3">
+                        <span className={`text-xs font-bold w-4 shrink-0 ${i === 0 ? "text-amber-400" : "text-muted-foreground"}`}>
+                          #{i + 1}
+                        </span>
+                        {p.images?.[0] ? (
+                          <img src={p.images[0]} alt={p.name} className="h-8 w-8 rounded-lg object-cover border border-border shrink-0" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-lg bg-accent/40 border border-border flex items-center justify-center shrink-0">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{p.name}</p>
+                          <p className="text-xs text-muted-foreground">₹{Number(p.price).toLocaleString("en-IN")} · {p.stock} in stock</p>
+                        </div>
+                        {p.avg_rating != null && (
+                          <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-400 shrink-0">
+                            <Star className="h-3 w-3 fill-amber-400" />{p.avg_rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Recent orders */}

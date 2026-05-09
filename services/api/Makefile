@@ -50,7 +50,7 @@ dev:
 	@echo "Starting development server..."
 	@echo "Press Ctrl+C to stop"
 	@echo ""
-	uvicorn main:app --reload --host 0.0.0.0 --port 8000
+	.venv/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8000 --reload-exclude '.venv/*'
 
 # Clean and restart
 restart: clean

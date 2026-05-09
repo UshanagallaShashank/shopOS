@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
   Building2, Plus, AlertTriangle, CheckCircle2,
   Pause, Wrench, ArrowRight, Search, Zap, Rocket, Crown,
+  Users, ClipboardList, TrendingUp, BarChart3, Activity,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,10 +35,18 @@ export default function OrgsManagerDashboard() {
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ["orgs"], queryFn: () => api.orgs.list(),
   })
+  const { data: users = [] } = useQuery({
+    queryKey: ["users-all"], queryFn: () => api.users.list(0, 200),
+  })
+  const { data: orgRequests = [] } = useQuery({
+    queryKey: ["org-requests"], queryFn: () => api.orgRequests.list(),
+  })
 
   const suspended  = orgs.filter((o) => o.status === "suspended")
   const maintenance = orgs.filter((o) => o.status === "maintenance")
   const active     = orgs.filter((o) => o.status === "active")
+  const pendingReqs = orgRequests.filter(r => r.status === "pending").length
+  const orgAdmins  = users.filter(u => u.role === "org_admin").length
 
   const filtered = orgs.filter((o) => {
     const matchSearch = !search || o.name.toLowerCase().includes(search.toLowerCase()) || o.slug.includes(search.toLowerCase())
@@ -57,6 +66,60 @@ export default function OrgsManagerDashboard() {
           <Link href="/orgs/new"><Plus className="h-3.5 w-3.5 mr-1.5" />New Org</Link>
         </Button>
       </div>
+
+      {/* Analytics summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { icon: Building2, label: "Total Orgs",    value: orgs.length,      sub: `${active.length} active`,  color: "text-primary",    bg: "bg-primary/10" },
+          { icon: Users,     label: "Org Admins",    value: orgAdmins,        sub: "store owners",             color: "text-blue-400",   bg: "bg-blue-500/10" },
+          { icon: ClipboardList, label: "Pending Requests", value: pendingReqs, sub: "awaiting review",       color: pendingReqs > 0 ? "text-orange-400" : "text-muted-foreground", bg: pendingReqs > 0 ? "bg-orange-500/10" : "bg-muted" },
+          { icon: BarChart3,  label: "Plan Mix",     value: `${orgs.filter(o=>o.plan==="enterprise").length}E / ${orgs.filter(o=>o.plan==="pro").length}P / ${orgs.filter(o=>o.plan==="starter").length}S`, sub: "Ent · Pro · Starter", color: "text-amber-400", bg: "bg-amber-500/10" },
+        ].map(({ icon: Icon, label, value, sub, color, bg }) => (
+          <div key={label} className="rounded-xl border border-border bg-card p-4">
+            <div className={`h-8 w-8 rounded-lg ${bg} flex items-center justify-center mb-2.5`}>
+              <Icon className={`h-4 w-4 ${color}`} />
+            </div>
+            <p className="text-xl font-bold leading-tight">{value}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mt-0.5">{label}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* Growth chart (org registrations last 6 months) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Org Registrations — Last 6 Months
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-2 h-20">
+            {Array.from({ length: 6 }, (_, i) => {
+              const now = new Date()
+              const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+              const label = d.toLocaleString("en-IN", { month: "short" })
+              const count = orgs.filter(o => {
+                const c = new Date(o.created_at)
+                return c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth()
+              }).length
+              return { label, count }
+            }).map(({ label, count }, i, arr) => {
+              const max = Math.max(...arr.map(m => m.count), 1)
+              const pct = Math.max(4, (count / max) * 100)
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <span className="text-xs font-bold">{count > 0 ? count : ""}</span>
+                  <div className="flex-1 w-full flex items-end">
+                    <div className={`w-full rounded-t-sm ${i === 5 ? "bg-primary" : "bg-primary/35"}`} style={{ height: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Alert */}
       {(suspended.length > 0 || maintenance.length > 0) && (

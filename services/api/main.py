@@ -6,7 +6,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import settings
-from routers import health, orgs, products, orders, users, auth, invites, org_requests, reviews, cart
+from routers import health, orgs, products, orders, users, auth, invites, org_requests, reviews, cart, notifications
+
+# Import all models to register them with SQLAlchemy
+import models  # noqa: F401
 
 app = FastAPI(title="ShopOS API", version="1.0.0")
 
@@ -73,6 +76,7 @@ app.include_router(invites.router, prefix="/invites", tags=["Invites"])
 app.include_router(org_requests.router, prefix="/org-requests", tags=["Org Requests"])
 app.include_router(reviews.router, tags=["Reviews"])
 app.include_router(cart.router, prefix="/cart", tags=["Cart"])
+app.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 
 
 # Debug endpoint to test token verification

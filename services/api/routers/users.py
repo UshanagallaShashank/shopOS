@@ -11,7 +11,7 @@ from database import get_db
 from middleware.auth import get_current_user, require_org_admin_or_above, require_platform_admin
 from models.user import User
 from schemas.org import OrgResponse
-from schemas.user import UserRegister, UserResponse, UserUpdate
+from schemas.user import UserRegister, UserResponse, UserSelfUpdate, UserUpdate
 from services import user_service
 from utils.pagination import paginate
 
@@ -33,6 +33,20 @@ async def register(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Returns the currently logged-in user's profile."""
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    data: UserSelfUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Users update their own profile (phone number etc.)."""
+    if data.phone is not None:
+        current_user.phone = data.phone
+        await db.commit()
+        await db.refresh(current_user)
     return current_user
 
 

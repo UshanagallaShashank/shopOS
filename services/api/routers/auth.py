@@ -1,13 +1,16 @@
-# Auth router — signup, login, OAuth redirect, OAuth callback
+# Auth router — signup, login, OAuth redirect, OAuth callback, phone OTP
+import re
 from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
 from schemas.auth import LoginRequest, SignupRequest, TokenResponse
 from services import auth_service
-from utils.exceptions import ConflictError
+from utils.exceptions import ConflictError, UnauthorizedError
 
 router = APIRouter()
 
@@ -67,3 +70,98 @@ async def logout():
     In the future, this could blacklist tokens or revoke Supabase sessions.
     """
     return {"message": "Logged out successfully"}
+
+
+# ── Phone OTP (via Supabase phone auth) ──────────────────────────────────────
+
+def _normalise_phone(raw: str) -> str:
+    digits = re.sub(r"\D", "", raw)
+    if raw.strip().startswith("+"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+91" + digits
+    if len(digits) == 12 and digits.startswith("91"):
+        return "+" + digits
+    if len(digits) == 11 and digits.startswith("0"):
+        return "+91" + digits[1:]
+    return "+" + digits
+
+
+class PhoneOTPRequest(BaseModel):
+    phone: str
+
+
+class PhoneOTPVerify(BaseModel):
+    phone: str
+    token: str
+
+
+@router.post("/phone/send-otp")
+async def phone_send_otp(data: PhoneOTPRequest):
+    """
+    Send a one-time password to `phone` via Supabase phone auth.
+    Supabase forwards the OTP through Twilio (configured in the Supabase dashboard).
+    Returns 200 on success regardless of whether the phone is registered —
+    do not leak whether a phone exists.
+    """
+    phone = _normalise_phone(data.phone)
+    supabase = _supabase_anon()
+    try:
+        supabase.auth.sign_in_with_otp({"phone": phone})
+    except Exception as exc:
+        raise UnauthorizedError(f"Could not send OTP: {exc}")
+    return {"message": "OTP sent"}
+
+
+@router.post("/phone/verify", response_model=TokenResponse)
+async def phone_verify_otp(data: PhoneOTPVerify, db: AsyncSession = Depends(get_db)):
+    """
+    Verify the OTP received via SMS. On success returns an access_token + user info
+    identical to the email/password login response.
+    """
+    from models.user import User, UserRole
+    from schemas.auth import ShopOSUserInfo
+    from services.auth_service import _get_or_create_db_user
+
+    phone = _normalise_phone(data.phone)
+    supabase = _supabase_anon()
+    try:
+        res = supabase.auth.verify_otp({
+            "phone": phone,
+            "token": data.token,
+            "type": "sms",
+        })
+    except Exception as exc:
+        raise UnauthorizedError(f"Invalid or expired OTP: {exc}")
+
+    session = res.session
+    if not session:
+        raise UnauthorizedError("OTP verification did not return a session")
+
+    # First, check if a user with this phone number already exists
+    result = await db.execute(select(User).where(User.phone == phone))
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        # Update the firebase_uid to link this Supabase auth user to existing ShopOS user
+        existing_user.firebase_uid = str(session.user.id)
+        # Update email if it's missing and Supabase has one
+        if not existing_user.email and session.user.email:
+            existing_user.email = session.user.email
+        await db.commit()
+        await db.refresh(existing_user)
+        db_user = existing_user
+    else:
+        # No existing user with this phone, create new one
+        db_user = await _get_or_create_db_user(
+            db,
+            supabase_uid=str(session.user.id),
+            email=session.user.email,
+            role=UserRole.end_user,
+            phone=phone,
+        )
+
+    return TokenResponse(
+        access_token=session.access_token,
+        user=ShopOSUserInfo.model_validate(db_user),
+    )

@@ -9,8 +9,10 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 export interface ShopOSUser {
   id: string
   email: string | null
+  phone: string | null
   role: UserRole
   org_id: string | null
+  created_at?: string
 }
 
 export function useAuth() {
@@ -92,5 +94,19 @@ export function useAuth() {
       ?? null
   }
 
-  return { shopUser, loading, signOut, getToken }
+  async function updatePhone(phone: string): Promise<void> {
+    const token = getToken()
+    if (!token) return
+    const res = await fetch(`${API}/users/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ phone }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setShopUser(updated)
+    }
+  }
+
+  return { shopUser, loading, signOut, getToken, updatePhone }
 }

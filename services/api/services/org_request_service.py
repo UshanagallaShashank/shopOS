@@ -103,6 +103,18 @@ async def review_org_request(
 
     await db.commit()
     await db.refresh(request)
+
+    # Notifications on approval/rejection
+    from services import sms_service, email_service
+    user_result2 = await db.execute(select(User).where(User.id == request.user_id))
+    notif_user = user_result2.scalar_one_or_none()
+    if notif_user:
+        if new_status == RequestStatus.approved:
+            sms_service.org_request_approved(notif_user.phone, request.org_name)
+            email_service.org_request_approved(notif_user.email, request.org_name)
+        elif new_status == RequestStatus.rejected:
+            email_service.org_request_rejected(notif_user.email, request.org_name)
+
     return request
 
 

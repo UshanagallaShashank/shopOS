@@ -6,6 +6,7 @@ import type {
   OrgInvite, OrgInviteCreate,
   OrgRequest, OrgRequestCreate,
   ProductReview, ReviewCreate, ReviewUpdate,
+  Notification as AppNotification,
 } from "./types"
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
@@ -42,6 +43,12 @@ const qs = (p: Record<string, string | number | undefined>) =>
 export const api = {
   auth: {
     logout: () => req<{ message: string }>("/auth/logout", { method: "POST" }),
+    sendPhoneOTP: (phone: string) =>
+      req<{ message: string }>("/auth/phone/send-otp", { method: "POST", body: JSON.stringify({ phone }) }),
+    verifyPhoneOTP: (phone: string, token: string) =>
+      req<{ access_token: string; token_type: string; user: { id: string; email: string | null; phone: string | null; role: string; org_id: string | null } }>(
+        "/auth/phone/verify", { method: "POST", body: JSON.stringify({ phone, token }) }
+      ),
   },
   orgs: {
     list: (skip = 0, limit = 50) => req<Org[]>(`/orgs/?${qs({ skip, limit })}`),
@@ -69,6 +76,8 @@ export const api = {
     setOrgAccess: (id: string, org_ids: string[]) =>
       req<User>(`/users/${id}/orgs`, { method: "PUT", body: JSON.stringify({ org_ids }) }),
     myOrgs: () => req<Org[]>("/users/me/orgs"),
+    updateMe: (data: { phone?: string }) =>
+      req<User>("/users/me", { method: "PATCH", body: JSON.stringify(data) }),
   },
   orders: {
     list: (orgId: string, skip = 0, limit = 100) =>
@@ -97,6 +106,13 @@ export const api = {
     update: (reviewId: string, data: ReviewUpdate) =>
       req<ProductReview>(`/reviews/${reviewId}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (reviewId: string) => req<void>(`/reviews/${reviewId}`, { method: "DELETE" }),
+  },
+  notifications: {
+    list: (unread_only = false, limit = 50) =>
+      req<AppNotification[]>(`/notifications/?unread_only=${unread_only}&limit=${limit}`),
+    unreadCount: () => req<{ count: number }>("/notifications/unread-count"),
+    markRead: (id: string) => req<AppNotification>(`/notifications/${id}/read`, { method: "PATCH" }),
+    markAllRead: () => req<{ message: string }>("/notifications/read-all", { method: "POST" }),
   },
   orgRequests: {
     create: (data: OrgRequestCreate) =>

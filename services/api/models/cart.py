@@ -3,7 +3,7 @@ import uuid
 
 from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
 from models.base import Timestamps, UUIDPrimaryKey
@@ -25,3 +25,7 @@ class CartItem(UUIDPrimaryKey, Timestamps, Base):
         UUID(as_uuid=True), ForeignKey("product_variants.id", ondelete="SET NULL"), nullable=True
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1)
+    
+    # Relationships
+    product: Mapped["Product"] = relationship("Product", lazy="noload")
+    variant: Mapped["ProductVariant"] = relationship("ProductVariant", lazy="noload")

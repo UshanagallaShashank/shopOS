@@ -24,6 +24,7 @@ async def _get_or_create_db_user(
     email: str | None,
     role: UserRole,
     org_id=None,
+    phone: str | None = None,
 ) -> User:
     """Find existing DB user or create one. Safe to call on every login."""
     result = await db.execute(select(User).where(User.firebase_uid == supabase_uid))
@@ -31,7 +32,7 @@ async def _get_or_create_db_user(
     if user:
         return user
 
-    user = User(firebase_uid=supabase_uid, email=email, role=role, org_id=org_id)
+    user = User(firebase_uid=supabase_uid, email=email, phone=phone, role=role, org_id=org_id)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -39,6 +40,8 @@ async def _get_or_create_db_user(
 
 
 async def signup(db: AsyncSession, supabase: Client, data: SignupRequest) -> TokenResponse:
+    from services import sms_service, email_service
+
     role = _resolve_role(data.secret_key)
 
     if role == UserRole.org_admin and not data.org_id:
@@ -62,11 +65,16 @@ async def signup(db: AsyncSession, supabase: Client, data: SignupRequest) -> Tok
         "password": data.password,
     })
 
-    # Create ShopOS DB user with the resolved role
+    # Create ShopOS DB user with the resolved role + phone
     db_user = await _get_or_create_db_user(
         db, supabase_uid, data.email, role,
         org_id=data.org_id if role == UserRole.org_admin else None,
+        phone=data.phone,
     )
+
+    # Welcome notifications — fire and forget
+    sms_service.welcome(db_user.phone, db_user.email)
+    email_service.welcome(db_user.email, db_user.email)
 
     return TokenResponse(
         access_token=session.session.access_token,

@@ -1,10 +1,39 @@
 # Pydantic schemas for User
+import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from models.user import UserRole
+
+
+def _normalise_phone(raw: str) -> str:
+    digits = re.sub(r"\D", "", raw)
+    if raw.strip().startswith("+"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+91" + digits
+    if len(digits) == 12 and digits.startswith("91"):
+        return "+" + digits
+    if len(digits) == 11 and digits.startswith("0"):
+        return "+91" + digits[1:]
+    return "+" + digits
+
+
+class UserSelfUpdate(BaseModel):
+    """Schema for users updating their own profile."""
+    phone: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        digits = re.sub(r"\D", "", v)
+        if len(digits) < 7:
+            raise ValueError("Phone number is too short")
+        return _normalise_phone(v)
 
 
 class UserRegister(BaseModel):

@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     platform_admin_secret: str = "change-me-admin-secret"
     org_admin_secret: str = "change-me-org-admin-secret"
 
+    # Twilio SMS — leave blank to disable SMS (dev mode)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""   # E.164 format e.g. +15551234567
+
+    # Resend email — leave blank to disable email (dev mode)
+    resend_api_key: str = ""       # get from resend.com (Supabase recommended)
+    email_from: str = "ShopOS <noreply@yourdomain.com>"
+
     class Config:
         env_file = ".env"
 

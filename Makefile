@@ -64,7 +64,7 @@ run:
 	cd services/api && .venv/bin/uvicorn main:app \
 		--reload \
 		--reload-dir . \
-		--reload-exclude '.venv' \
+		--reload-exclude '.venv/*' \
 		--reload-include "*.py" \
 		--port 8000
 
@@ -117,7 +117,7 @@ dev-api:
 	cd services/api && .venv/bin/uvicorn main:app \
 		--reload \
 		--reload-dir . \
-		--reload-exclude '.venv' \
+		--reload-exclude '.venv/*' \
 		--reload-include "*.py" \
 		--port 8000
 
