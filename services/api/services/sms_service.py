@@ -115,3 +115,13 @@ def org_request_approved(phone: str, org_name: str) -> None:
         f"ShopOS: Congrats! Your store request for '{org_name}' has been approved. "
         f"Log in to set up your shop.",
     )
+
+
+def send_notification(phone: str | None, message: str) -> None:
+    """Generic notification SMS"""
+    if not phone:
+        return
+    # Truncate message to 160 characters for SMS
+    if len(message) > 160:
+        message = message[:157] + "..."
+    send(phone, f"ShopOS: {message}")

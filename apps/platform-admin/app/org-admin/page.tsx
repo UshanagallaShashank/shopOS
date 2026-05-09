@@ -383,28 +383,7 @@ export default function OrgAdminDashboard() {
     },
   })
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-48">
-      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-
-  if (!orgId) {
-    return (
-      <div className="max-w-md space-y-3 pt-8">
-        <h1 className="text-2xl font-bold">Org Admin</h1>
-        <p className="text-muted-foreground text-sm">Your account is not assigned to an organisation yet. Contact your platform admin.</p>
-      </div>
-    )
-  }
-
-  const activeProducts = products.filter((p) => p.is_active)
-  const lowStock = products.filter((p) => p.stock < 5 && p.is_active)
-  const pendingOrders = orders.filter((o) => o.status === "pending")
-  const inTransit = orders.filter((o) => ["shipped", "out_for_delivery"].includes(o.status))
-  const revenue = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + Number(o.total), 0)
-  const tpl = getTemplate(org?.ui_template)
-
+  // Calculate derived data with useMemo (must be before early returns)
   const monthlyRevenue = useMemo(() => {
     const now = new Date()
     return Array.from({ length: 6 }, (_, i) => {
@@ -424,7 +403,6 @@ export default function OrgAdminDashboard() {
       return { label, rev, count }
     })
   }, [orders])
-  const maxMonthlyRev = Math.max(...monthlyRevenue.map(m => m.rev), 1)
 
   const orderStatusFlow = useMemo(() => ([
     { status: "pending",   label: "Pending",   count: orders.filter(o => o.status === "pending").length,   color: "bg-orange-400", text: "text-orange-400" },
@@ -440,6 +418,31 @@ export default function OrgAdminDashboard() {
       .sort((a, b) => (b.review_count - a.review_count) || ((b.avg_rating ?? 0) - (a.avg_rating ?? 0)))
       .slice(0, 5)
   , [products])
+
+  // Early returns AFTER all hooks
+  if (loading) return (
+    <div className="flex items-center justify-center h-48">
+      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (!orgId) {
+    return (
+      <div className="max-w-md space-y-3 pt-8">
+        <h1 className="text-2xl font-bold">Org Admin</h1>
+        <p className="text-muted-foreground text-sm">Your account is not assigned to an organisation yet. Contact your platform admin.</p>
+      </div>
+    )
+  }
+
+  // Derived data calculations
+  const activeProducts = products.filter((p) => p.is_active)
+  const lowStock = products.filter((p) => p.stock < 5 && p.is_active)
+  const pendingOrders = orders.filter((o) => o.status === "pending")
+  const inTransit = orders.filter((o) => ["shipped", "out_for_delivery"].includes(o.status))
+  const revenue = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + Number(o.total), 0)
+  const tpl = getTemplate(org?.ui_template)
+  const maxMonthlyRev = Math.max(...monthlyRevenue.map(m => m.rev), 1)
 
   return (
     <div ref={topRef} className="space-y-6">

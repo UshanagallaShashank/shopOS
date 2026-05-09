@@ -196,3 +196,14 @@ def org_request_rejected(email: str | None, org_name: str) -> None:
         + _p("You can contact our support team if you have questions or wish to reapply."),
     )
     send(email, f"Store Request Update — {org_name}", html)
+
+
+def send_notification(email: str | None, title: str, message: str) -> None:
+    """Generic notification email"""
+    if not email:
+        return
+    html = _wrap(
+        title,
+        _p(message),
+    )
+    send(email, title, html)
